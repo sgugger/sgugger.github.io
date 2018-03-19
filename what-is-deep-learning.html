@@ -1,0 +1,347 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="http://sgugger.github.io/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="http://sgugger.github.io/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="http://sgugger.github.io/theme/font-awesome/css/font-awesome.min.css">
+
+
+
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="What is deep learning? It's a class of algorithms where you train something called a neural net to complete a specific task. Let's begin with a general overview and we will dig into the details in subsequent articles." />
+<meta name="keywords" content="neural net">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="What is deep learning?"/>
+<meta property="og:description" content="What is deep learning? It's a class of algorithms where you train something called a neural net to complete a specific task. Let's begin with a general overview and we will dig into the details in subsequent articles."/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="http://sgugger.github.io/what-is-deep-learning.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-03-13 17:20:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="http://sgugger.github.io/author/sylvain-gugger.html">
+<meta property="article:section" content="Deep learning"/>
+<meta property="article:tag" content="neural net"/>
+<meta property="og:image" content="http://sgugger.github.io/images/profile.png">
+
+  <title>Another data science student's blog &ndash; What is deep learning?</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="http://sgugger.github.io">
+        <img src="http://sgugger.github.io/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="http://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="http://sgugger.github.io/pages/about-me.html#about-me">About me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="http://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="what-is-deep-learning">What is deep learning?</h1>
+    <p>
+          Posted on Tue 13 March 2018 in <a href="http://sgugger.github.io/category/deep-learning.html">Deep learning</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>What is deep learning? It's a class of algorithms where you train something called a neural net to complete a specific task. Let's begin with a general overview and we will dig into
+the details in subsequent articles.</p>
+<div class="section" id="a-neural-net">
+<h2>A neural net</h2>
+<p>To some extent, a neural net is an attempt by engineers to get a computer to replicate the behavior of our brain. A neuron in our brain gets a .</p>
+<img alt="Neuron model" class="align-center" src="../images/art1_neuron.png" />
+<p>A model of that is to consider a structure getting a certain number of entries, each of them having a weight attributed to them. If this neuron as <span class="math">\(n\)</span> entries that are
+<span class="math">\(x_{1},\dots,x_{n}\)</span>, with the weights <span class="math">\(w_{1},\dots,w_{n}\)</span>, we consider the sum of the inputs multiplied by the weight to compute the output:</p>
+<div class="math">
+\begin{equation*}
+y = f \left ( w_{1}x_{1} + \cdots + w_{n}x_{n} \right )
+\end{equation*}
+</div>
+<p>or in a more compact way</p>
+<div class="math">
+\begin{equation*}
+y = f \left ( \sum_{i=1}^{n} w_{i} x_{i} \right ).
+\end{equation*}
+</div>
+<p>Here <span class="math">\(y\)</span> is the output (or activation) and <span class="math">\(f\)</span> a function called the activation function. A few classical activation functions are the rectified linear unit (ReLU), the
+sigmoid function or the hyperbolic tan function:</p>
+<img alt="Graph of the ReLU function" class="align-center" src="../images/art1_relu.png" style="width: 500px;" />
+<div class="math">
+\begin{equation*}
+\hbox{ReLU}(x) = \max(0,x)
+\end{equation*}
+</div>
+<img alt="Graph of the sigmoid function" class="align-center" src="../images/art1_sigmoid.png" style="width: 400px;" />
+<div class="math">
+\begin{equation*}
+\sigma(x) = \frac{\mathrm{e}^{x}}{1+\mathrm{e}^{x}}
+\end{equation*}
+</div>
+<img alt="Graph of the tanh function" class="align-center" src="../images/art1_tanh.png" style="width: 500px;" />
+<div class="math">
+\begin{equation*}
+\hbox{tanh}(x) = \frac{\mathrm{e}^{x} - \mathrm{e}^{-x}}{\mathrm{e}^{x} + \mathrm{e}^{-x}}
+\end{equation*}
+</div>
+<p>The function <span class="math">\(\hbox{tanh}\)</span> is actually a sigmoid that we enlarged and translated to go from -1 to 1. To do this, we just have to multiply the sigmoid by 2 (the range between
+-1 and 1) then subtract 1:</p>
+<div class="math">
+\begin{equation*}
+\hbox{tanh}(x) = 2 \sigma(2x) - 1
+\end{equation*}
+</div>
+<p>These three functions are just the three most popular, but we could take any function, as long as it's non-linear and easy to differentiate (for reasons we will see later).</p>
+<p>One last parameter we usually consider in our neuron is something called a bias, that is added to the weighted sum of the inputs before going into the activation function.</p>
+<div class="math">
+\begin{equation*}
+y = f \left ( \sum_{i=1}^{n} w_{i} x_{i} + b \right ).
+\end{equation*}
+</div>
+<p>If we consider the case of a ReLU activation function (which basically replaces the negative by zero), the opposite of this bias is then the minimum value to reach to get an
+activation that isn't nil.</p>
+<p>So that's one neuron. In a neural net, we have quite a few of them, regrouped in what we call layers. An example of neural net with a single layer would look like this:</p>
+<img alt="Neural net with one layer" class="align-center" src="../images/art1_simplennet.png" />
+<p>So let's say we want to build a neural net with an input size <span class="math">\(n_{in}\)</span> and an output size <span class="math">\(n_{out}\)</span>. We then must have <span class="math">\(n_{out}\)</span> neurons.
+Each one of our neurons then has <span class="math">\(n_{in}\)</span> inputs, so it must have as many weights. If we consider the neuron number <span class="math">\(i\)</span> we can call this weights
+<span class="math">\(w_{1,i},\dots,w_{n_{in},i}\)</span> and the bias of the neuron <span class="math">\(b_{i}\)</span> then the output number <span class="math">\(i\)</span> is</p>
+<div class="math">
+\begin{equation*}
+y_{i} = f \left ( \sum_{k=1}^{n_{in}} x_{k} w_{k,i} + b_{i} \right )
+\end{equation*}
+</div>
+<p>where <span class="math">\(x_{1},\dots,x_{n_{in}}\)</span> are the coordinates of the input. There is a more compact way to write this, with a little bit of linear algebra. The big sum inside the
+parenthesis is just the i-th coordinate of the matrix product <span class="math">\(XW\)</span> if we define the matrix <span class="math">\(W\)</span> as the array of weights <span class="math">\((w_{i,k})\)</span> (with <span class="math">\(n_{in}\)</span> rows and
+<span class="math">\(n_{out}\)</span> columns) and <span class="math">\(X\)</span> is a vector containing the inputs (viewed as a single row). If we then note <span class="math">\(Y\)</span> the vector containing the outputs and <span class="math">\(B\)</span> the
+vector containing the biases (both have <span class="math">\(n_{out}\)</span> coordinates), we can simply write</p>
+<div class="math">
+\begin{equation*}
+Y = f(XW + B)
+\end{equation*}
+</div>
+<p>where <span class="math">\(f\)</span> is applied to each one of the coordinates of the vector <span class="math">\(XW + B\)</span>.</p>
+<p>This is the only thing a neural net does, apply a linear operation then an activation function. Except it does that many times: instead of having just one layer of neurons, we
+have multiple ones, each one feeding the next.</p>
+<img alt="Neural net with three layers" class="align-center" src="../images/art1_complexnnet.png" />
+<p>Here we have three layers, each one having its own set of weights <span class="math">\(W_{l}\)</span>, its vector of biases <span class="math">\(B_{l}\)</span> and its activation function <span class="math">\(f_{l}\)</span>. The only constraint
+is that each vector of bias as the same number of coordinates as the number of columns of the weigh matrix, which must also be the number of rows of the next weight matrix.</p>
+<p>If we have an input <span class="math">\(X\)</span>, we compute the output by going through each layer, one after the other:</p>
+<div class="math">
+\begin{equation*}
+\left \{ \begin{array}{l} X_{0} = X \\ X_{1} = f_{0}(X_{0}W_{1} + B_{1}) \\ X_{2} = f_{1}(X_{1}W_{2} + B_{2}) \\ \vdots \\ X_{L} = f_{L}(X_{L-1}W_{L} + B_{L}) \end{array} \right .
+\end{equation*}
+</div>
+<p>where <span class="math">\(L\)</span> is the number of layers. This is when we see why each activation function must be non-linear. If one (say <span class="math">\(f_{0}\)</span>) was linear, the operations
+going from <span class="math">\(X_{0}\)</span> to <span class="math">\(X_{1}W_{2} + B_{2}\)</span> would all be linear, so they could be summarized in to</p>
+<div class="math">
+\begin{equation*}
+X_{1}W_{2} + B_{2} = X_{0}W'_{1} + B'_{1}
+\end{equation*}
+</div>
+<p>and there wouldn't be any need to have that initial first layer.</p>
+</div>
+<div class="section" id="training">
+<h2>Training</h2>
+<p>Now that we know what a neural net is, we can study how we can teach him to solve a particular problem. All the weights and the biases of the neural net we saw before (that are
+called the parameters of our model) are initialized at random, so initially, the output the neural net will compute has nothing to do with what we would expect. It's through
+a process called training that we will make our model better.</p>
+<p>To do this, we need a set of labeled data, which is a collection of inputs where we know the desired output, for instance, in an image classification problem, pictures that have
+been classified for us. We can then evaluate how badly our model is doing by computing all the outputs and comparing them to the theoretical ones. To give a value to this, we*
+use an error function.</p>
+<p>An error function that is often used is called MSE for Mean Squared Errors. If <span class="math">\(Y\)</span> is the output we computed and <span class="math">\(Z\)</span> the one we should have found, one way to see
+how far away <span class="math">\(Y\)</span> is from <span class="math">\(Z\)</span> is to take the mean of the errors between each coordinate <span class="math">\(y_{i}\)</span> and <span class="math">\(z_{i}\)</span>. This error can be represented by
+<span class="math">\((z_{i}-y_{i})^{2}\)</span>. The square is to get rid of the negatives (an error of -4 is as bas as an error of 4). If <span class="math">\(Y\)</span> and <span class="math">\(Z\)</span> are of size <span class="math">\(n_{out}\)</span>, this
+can be written</p>
+<div class="math">
+\begin{equation*}
+\hbox{MSE}(Y,Z) = \frac{1}{n_{out}} \sum_{i=1}^{n_{out}} (z_{i}-y_{i})^{2}.
+\end{equation*}
+</div>
+<p>And then we can define the total loss by taking the mean of the loss on all our data. If we have <span class="math">\(N\)</span> inputs <span class="math">\(X_{1},\dots,X_{N}\)</span> that are labeled
+<span class="math">\(Z_{1},\dots,Z_{N}\)</span> (the theoretical outputs we are supposed to get), by computing what the network returns when you feed it the <span class="math">\(X_{i}\)</span> and naming this as
+<span class="math">\(Y_{i}\)</span> we then have</p>
+<div class="math">
+\begin{equation*}
+\hbox{loss} = \frac{1}{N} \sum_{k=1}^{N} \hbox{MSE}(Y_{k},Z_{k})
+\end{equation*}
+</div>
+<p>Any kind of function could be used for the loss, as long as it's always positive (you don't want to subtract things from previous losses), that it only vanishes at zero, and
+that it's easy to differentiate. The total loss is always taken by averaging the loss on all the samples of the dataset.</p>
+<p>Since the network's parameters are initialized at random, this loss will be pretty bad at the beginning. Training is a process during which the computer will compute this loss,
+analyze why it's so bad, and try to do a little bit better the next time. More specifically, we will try to determine a new set of parameters (all the weights and the biases)
+that will give us a slightly better loss. Then by repeating this over and over again, we should find the set of parameters that minimize this loss.</p>
+<p>The exciting thing with neural networks, is that even if they learn on a specific dataset, they tend to generalize pretty well (and there's a bun of techniques we can use to
+make sure the model doesn't overfit to the training data). In image recognition for instance, those kinds of models can have better accuracy than humans.</p>
+<p>To minimize this loss, we use an algorithm called SGD for Stochastic Gradient Descent. The idea is fairly simple: if you're in the mountains and looking for the point that is
+at the lowest altitude, you just take a step down, and a step down, and so forth until you reach that particular spot. This is going to be exactly the same for our neural
+net and its loss. To minimize that function, we will take a little step down.</p>
+<p>This function loss depends of a certain amount of parameters <span class="math">\(p_{1},\dots,p_{t}\)</span> (all the weights and all the biases). Now, with just a little bit of math, we know that
+the way down for a function of <span class="math">\(t\)</span> variables (which is the direction where it's steeper) is given by the opposite of the gradient. This is the vector</p>
+<div class="math">
+\begin{equation*}
+\overlongrightarrow{\hbox{grad}} \hbox{loss} = \left ( \frac{\partial \hbox{loss}}{\partial p_{1}}, \dots, \frac{\partial \hbox{loss}}{\partial p_{t}} \right )
+\end{equation*}
+</div>
+<p>To update our parameters, which just have to take a step along the opposite of the gradients, which means subtract to the vector <span class="math">\((p_{1},\dots,p_{t})\)</span> a little bit
+multiplied by this gradient vector. How much? That's the question that has been driving crazy a lot of data scientists, and we will give an answer in another article.
+This little bit is called the learning rate, and if we note it <span class="math">\(\hbox{lr}\)</span> we can update our parameters with the formulas:</p>
+<div class="math">
+\begin{equation*}
+\hbox{new } p_{i} = \hbox{old } p_{i} - \hbox{lr} \times \frac{\partial \hbox{loss}}{\partial p_{i}}.
+\end{equation*}
+</div>
+<p>By doing this, we know that the loss, the next time we compute all the outputs of all our data, is going to be better (the only exception would be if we chose a too high learning
+rate, which would make us miss the spot where our function was lowest, but we'll get back to this later). So by repeating this step over and over again, we will eventually get
+to a minimum of our loss function, and a very good model.</p>
+<p>This explains the Gradient Descent in SGD but not the Stochastic part. The random part appears by necessity: very often our training dataset has a lot of labeled inputs. It can
+be as big as a million images. That's why, for a step of gradient descent, we don't compute the total loss, but rather the loss on a smaller sample called a minibatch. If we
+choose to take the sample <span class="math">\((X_{k_{1}},Z_{k_{1}}),\dots,(X_{k_{mb}},Z_{k_{mb}})\)</span> the loss on this minibatch will just be:</p>
+<div class="math">
+\begin{equation*}
+\hbox{loss}' = \frac{1}{mb} \sum_{q=1}^{mb} \hbox{MSE}(Y_{k_{q}},Z_{k_{q}})
+\end{equation*}
+</div>
+<p>The idea is that this new loss will have a gradient that is close to the gradient of the real loss (since we're averaging on a minibatch and not just taking one sample) but with
+fewer computation time. In practice, to make sure we still see all of the data, we don't overlap the minibatches, taking different parts of our training set each time we randomly
+pick a minibatch, and updating all the parameters of our network each time, up until we have seen all the inputs once. This whole process is called an epoch.</p>
+<p>We can then run as many epochs as we want (or as we have time to), as long as the learning rate is low enough, the neural network should progress and become better each time.
+The gradient may seem a bit complicated to evaluate, but it can be computed exactly by using the chain rule, going backward from the end (compute the derivatives of the loss
+function with respects to the obtained outputs), through each layer, up until the beginning.</p>
+<p>That is all the general theory behind a neural network. I will dig more into the details in further articles to explain the different layers we can find, the little tweaks we can
+add to SGD to make it train faster, how to set the learning rate and how to compute those gradients. We'll see how to code simple and more complex examples of neural networks
+in pytorch, but you can already jump a bit ahead and look at the first video of the deep-learning course of fast.ai, and train in a few minutes a neural net recognizing cats from
+dogs with 99% accuracy.</p>
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="http://sgugger.github.io/tag/neural-net.html">neural net</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "http://sgugger.github.io",
+  "image": "http://sgugger.github.io/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>
