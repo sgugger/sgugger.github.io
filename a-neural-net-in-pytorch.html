@@ -10,6 +10,7 @@
   <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
 
 
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
 
 
 
@@ -24,7 +25,7 @@
 <meta name="description" content="The theory is all really nice, but let's actually build a neural net and train it! We'll see how a simple neural net with one hidden layer can learn to recognize digits very efficiently." />
 <meta name="keywords" content="Neural net, Pytorch">
 <meta property="og:site_name" content="Another data science student's blog"/>
-<meta property="og:title" content="A neural net in pytorch"/>
+<meta property="og:title" content="A Neural Net In Pytorch"/>
 <meta property="og:description" content="The theory is all really nice, but let's actually build a neural net and train it! We'll see how a simple neural net with one hidden layer can learn to recognize digits very efficiently."/>
 <meta property="og:locale" content="en_US"/>
 <meta property="og:url" content="/a-neural-net-in-pytorch.html"/>
@@ -37,7 +38,7 @@
 <meta property="article:tag" content="Pytorch"/>
 <meta property="og:image" content="/images/profile.png">
 
-  <title>Another data science student's blog &ndash; A neural net in pytorch</title>
+  <title>Another data science student's blog &ndash; A Neural Net In Pytorch</title>
 
 </head>
 <body>
@@ -51,7 +52,7 @@
 
       <nav>
         <ul class="list">
-          <li><a href="/pages/about-me.html#about-me">About me</a></li>
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
 
           <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
         </ul>
@@ -75,12 +76,14 @@
       <a href="/tags.html">Tags</a>
       <a href="/archives.html">Archives</a>
 
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
 
     </nav>
 
 <article class="single">
   <header>
-    <h1 id="a-neural-net-in-pytorch">A neural net in pytorch</h1>
+    <h1 id="a-neural-net-in-pytorch">A Neural Net In Pytorch</h1>
     <p>
           Posted on Fri 16 March 2018 in <a href="/category/deep-learning.html">Deep learning</a>
 
@@ -94,15 +97,15 @@
 In particular, I won't explain the specifics of getting the data and preprocessing it here.</p>
 <div class="section" id="pytorch">
 <h2>Pytorch</h2>
-<p>Pytorch is a Python library that provides all what is needed to implement deep-learning easily. In particular, it enables GPU-accelerated computations and provides automatic
-differentiation. We have seen why the latter is useful in the <a class="reference external" href="/what-is-deep-learning.html">previous article</a>, and this the reason why we will never have to worry about
-calculating gradients (unless we really want to dig into that).</p>
-<p>But why GPUs? As we have seen, deep-learning is just a succession of linear operations with a few functions applied element-wise in between, and it happens that GPUs are really
+<p><a class="reference external" href="http://pytorch.org/">Pytorch</a> is a Python library that provides all what is needed to implement Deep Learning easily. In particular, it enables GPU-accelerated computations and provides
+automatic differentiation. We have seen why the latter is useful in the <a class="reference external" href="/what-is-deep-learning.html">previous article</a>, and this the reason why we will never have to worry
+about calculating gradients (unless we really want to dig into that).</p>
+<p>But why GPUs? As we have seen, Deep Learning is just a succession of linear operations with a few functions applied element-wise in between, and it happens that GPUs are really
 good (and fast!) at those, because that's what is basically needed to decide which color should each pixel of the screen have when playing a game. Thanks to the gaming industry,
-research on GPUs has made them extremely efficient, which is also why deep-learning has gained that much interest in the past few years. We can consider deeper network and train
+research on GPUs has made them extremely efficient, which is also why Deep Learning has become better in a lot of different areas. We can consider deeper network and train
 them on much more data nowadays.</p>
-<p>To use the full potential of this library, we're going to need a, preferably several, efficient GPU. A gaming computer can have one, but the best way is to rent some. Services
-to rent GPUs by the hour have flourished and you can easily find some powerful virtual machines with 8 efficient GPUs for less than fifty cents an hour. I'm personally using
+<p>To use the full potential of this library, we're going to need one, preferably several, efficient GPU. A gaming computer can have one, but the best way is to rent some. Services
+to rent GPUs by the hour have flourished and you can easily find some powerful virtual machines with efficient GPUs for less than fifty cents an hour. I'm personally using
 Paperspace at the moment.</p>
 <p>I'm mostly using pytorch because the library of fast.ai is built on top of it, but I really like the way it uses Python functionalities (as we'll see, it makes good use of
 Object Oriented Programming in Python) and the fact the gradients are dynamically computed. It's making the implementation of Recurrent Neural Networks a lot easier in my
@@ -110,7 +113,7 @@ opinion, but we'll see more of that later.</p>
 </div>
 <div class="section" id="mnist-dataset">
 <h2>MNIST Dataset</h2>
-<p>To have some data on which try our neural net, we will use the MNIST Dataset. It's a set of hand-written digits that contains 70,000 pictures with their labels. It is divided
+<p>To have some data on which try our neural net, we will use the MNIST Dataset. It's a set of hand-written digits that contains 70,000 pictures with their labels. It's divided
 in two parts, one training set with 60,000 digits (on which we will train our model) and 10,000 others that form the test. These were drawn by different people from the ones
 in the first test, and by evaluating how well on this set, we will see how well it actually generalizes what it learned.</p>
 <p>We'll skip the part as to how to get those sets and how to treat them since it's all shown in the notebook. Let's go to the part where we define our neural net instead. The
@@ -122,8 +125,8 @@ a horse? One output won't really represent this, whereas four outputs will certa
 </div>
 <div class="section" id="softmax">
 <h2>Softmax</h2>
-<p>When we have a classification problem and a neural network trying to solve it with <span class="math">\(N\)</span> outputs (the number of classes), we want those outputs to represent the probabilities
-the input is in each of the classes. To make sure that's our final <span class="math">\(N\)</span> numbers are all positive and add up to one, we use the softmax activation for the last layer.</p>
+<p>When we have a classification problem and a neural network trying to solve it with <span class="math">\(N\)</span> outputs (the number of classes), we would like those outputs to represent the probabilities
+the input is in each of the classes. To make sure that our final <span class="math">\(N\)</span> numbers are all positive and add up to one, we use the softmax activation for the last layer.</p>
 <p>If <span class="math">\(z_{1},\dots,z_{N}\)</span> are the last activations given by our final linear layer, instead of pushing them through a ReLU or a sigmoid, we define the outputs
 <span class="math">\(y_{1},\dots,y_{N}\)</span> by</p>
 <div class="math">
@@ -132,7 +135,7 @@ y_{i} = \frac{\mathrm{e}^{z_{i}}}{\mathrm{e}^{z_{1}} + \cdots + \mathrm{e}^{z_{N
 \end{equation*}
 </div>
 <p>As we take the exponentials of the <span class="math">\(z_{i}\)</span>, we are sure all of them are positive. Then since we divide by their sum, they must all add up to one, so softmax satisfies
-all the perquisite we wanted for our final output.</p>
+all the prerequisites we wanted for our final output.</p>
 <p>One nice side effect (and which is the reason we chose the exponential) is that if one of the <span class="math">\(z_{i}\)</span> is slightly bigger than the other, its exponential will be a lot
 bigger. This will have the effect that the corresponding <span class="math">\(y_{i}\)</span> will be close to 1, while the other <span class="math">\(y_{j}\)</span> are close to zero. Softmax is an activation that really
 <em>wants</em> to pick one class over the other.</p>
@@ -142,8 +145,8 @@ an output that is close to what we really want, so it will learn faster and gene
 <div class="section" id="cross-entropy">
 <h2>Cross Entropy</h2>
 <p>To evaluate how badly our model is doing, we had seen the Mean Squared Error loss in the last article. When the output activation function is softmax or a sigmoid, another
-function is usually used, called Cross Entropy Loss. If the correct class our model should pick is the <span class="math">\(i\)</span>-th, we define the loss as being <span class="math">\(-\ln(y_{i})\)</span> (when
-the output is <span class="math">\((y_{1},\dots,y_{N}\)</span>.</p>
+function is usually used, called Cross Entropy Loss. If the correct class our model should pick is the <span class="math">\(i\)</span>-th, we define the loss as being <span class="math">\(-\ln(y_{i})\)</span> when
+the output is <span class="math">\((y_{1},\dots,y_{N})\)</span>.</p>
 <p>Since all the <span class="math">\(y_{i}\)</span> are between 0 and 1, this loss is a positive number, and it vanishes when <span class="math">\(y_{i} = 1\)</span>. If <span class="math">\(y_{i}\)</span> is real low though (and we are doing
 a mistake in choosing this class) it'll get particularly high.</p>
 <p>If we had multiple correct answers (in a multi-classification problem) we would sum the <span class="math">\(-\ln(y_{i})\)</span> over all the correct classes <span class="math">\(i\)</span>.</p>
@@ -162,11 +165,11 @@ ln(y_{i}) = \ln \left ( \frac{\mathrm{e}^{z_{i}}}{\sum_{k=1}^{N} \mathrm{e}^{z_{
 <p>and the derivative of the loss with respect to <span class="math">\(z_{j}\)</span> with <span class="math">\(j \neq i\)</span> is</p>
 <div class="math">
 \begin{equation*}
-\frac{\partial \hbox{loss}}{\partial z_{j}} = frac{\mathrm{e}^{z_{j}}}{\sum_{k=1}^{N} \mathrm{e}^{z_{k}}} = y_{j}
+\frac{\partial \hbox{loss}}{\partial z_{j}} = \frac{\mathrm{e}^{z_{j}}}{\sum_{k=1}^{N} \mathrm{e}^{z_{k}}} = y_{j}
 \end{equation*}
 </div>
 <p>so it's always <span class="math">\(y_{j} - \hat{y_{j}}\)</span>, where <span class="math">\(\hat{y_{j}}\)</span> is the output we are supposed to obtain. This simplification makes it easier to compute the gradients, and
-it also has the advantage of giving a higher gradient when the error is big, whereas with the MSE loss we'd end up with slower ones, hence learning more slowly.</p>
+it also has the advantage of giving a higher gradient when the error is big, whereas with the MSE loss we'd end up with littler ones, hence learning more slowly.</p>
 <p>In practice, pytorch implemented the computation of log softmax faster than softmax, and since we're using the log of the softmax in our loss function, we'll use
 log softmax as the output activation function. The only thing we have to remember is that we'll then receive the logs of the probabilities for our input to be in each class,
 which means we'll have to put them through exp if we want to see the actual probabilities.</p>
@@ -198,25 +201,30 @@ on our custom nn.Module, we can use them inside the definition of another one.</
 <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_hidden</span><span class="p">,</span><span class="n">n_out</span><span class="p">):</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">linear1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_hidden</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">linear2</span> <span class="o">==</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_hidden</span><span class="p">,</span><span class="n">n_out</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">linear2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_hidden</span><span class="p">,</span><span class="n">n_out</span><span class="p">)</span>
 </pre>
 <p>The code is pretty straightforward, our linear layers have been automatically initialized by pytorch, with random weights and biases.
 For the forward pass, it's almost as easy, there's just one little problem. Our input is going to be a mini-batch of images. Inside pytorch,
 it will be stored as a tensor (think array) of size mb by 1 by 28 by 28, where mb is the number we choose for our mini-batch size (64 in the notebook).</p>
 <p>Why is that? Well it's faster to compute all the outputs of the mini-batch at the same time. If we remember how a linear layer works, we calculate <span class="math">\(XW + B\)</span> where
 <span class="math">\(X\)</span> is the input viewed as a line, <span class="math">\(W\)</span> the weight matrix and <span class="math">\(B\)</span> the vector of biases. Instead of doing this mb times, we can be more efficient and do all
-the operations at once, if we replace <span class="math">\(X\)</span> by a matrix, each line being one of the different inputs of the mini-batch. This way, <span class="math">\(XW + B'\)</span> is going to be a matrix
-where each line is a vector of outputs, the only trick being to replace <span class="math">\(B\)</span> by a matrix with the same number of lines as <span class="math">\(X\)</span>, repeating <span class="math">\(B\)</span> each time. This
-process is called vectorization.</p>
+the operations at once, if we replace <span class="math">\(X\)</span> by a matrix, each line being one of the different inputs of the mini-batch: <span class="math">\(X_{1},\dots,X_{n_{in}}\)</span>. This way, <span class="math">\(XW + B'\)</span>
+is going to be a matrix where each line is a vector of outputs, the only trick being to replace <span class="math">\(B\)</span> by a matrix with the same number of lines as <span class="math">\(X\)</span>, repeating <span class="math">\(B\)</span> each time.</p>
+<div class="math">
+\begin{equation*}
+\left ( \begin{array}{c} X_{1} \\ X_{2} \\ \vdots \\ X_{n_{in}} \end{array} \right ) \times W + \left ( \begin{array}{c} B \\ B \\ \vdots \\ B \end{array} \right ) = \left ( \begin{array}{c} Y_{1} \\ Y_{2} \\ \vdots \\ Y_{n_{out}} \end{array} \right )
+\end{equation*}
+</div>
+<p>This process is called vectorization.</p>
 <p>So that explain the first dimension in our tensor. The last two are the actual size of the picture (28 by 28 pixels) and pytorch adds a dimension because he knows our input is
-an image, and usually images have three channels (for red, green and blue). We have 1 here because the picture is balck and white.</p>
-<p>Following the logic of our vectorization process, the first linear layer is going to expect a tensor of size mb by 784 (which is the result of 28 * 28), so we have to resize
+an image, and usually images have three channels (for red, green and blue). We have 1 here because the picture is black and white.</p>
+<p>Following the logic of this vectorization process, the first linear layer is going to expect a tensor of size mb by 784 (which is the result of 28 * 28), so we have to resize
 our input (we usually say flatten). To do so, we use the method view:</p>
 <pre class="code python literal-block">
 <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 </pre>
 <p>In this line, we tell pytorch to transform x into a two-dimensional array, with a first dimension being the same as the previous value of x, and the second, whatever it needs
-to be so that it fits.</p>
+to be so that it fits the previous shape of x.</p>
 <p>Once we have this line, the rest of the forward pass is easy: we apply the first linear layer, a ReLU, the second linear layer, and the log softmax. Note that all the functions
 we need are in the F (for nn.functional) library.</p>
 <pre class="code python literal-block">
@@ -235,14 +243,15 @@ we need are in the F (for nn.functional) library.</p>
 <h2>The training loop</h2>
 <p>Now that we have our model, we must train him to recognize digits. With a random initialization, we can expect it to have a 10%-accuracy at the beginning. But we'll see how
 quickly it improves when applying SGD.</p>
-<p>The key thing pytorch provides us with, is automatic differentiation. This means we won't have to compute the gradients ourselves. There is two little things to think of though.
-The first one is that pytorch must remember how an output was created from an input, to be able to roll back from this defintion and calculate the gradients. This is done
-thourgh the Variable object. Instead of feeding a tensor to our model, we will wrap it in a variable.</p>
+<p>The key thing pytorch provides us with, is automatic differentiation. This means we won't have to compute the gradients ourselves. There is two little things to think of, though.
+The first one is that pytorch must remember how an output was created from an input, to be able to roll back from this definition and calculate the gradients. This is done
+through the Variable object. Instead of feeding a tensor to our model, we will wrap it in a Variable.</p>
 <pre class="code python literal-block">
 <span class="n">x</span> <span class="o">=</span> <span class="n">Variable</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 </pre>
 <p>The new object x still has all the inputs, that we can find in x.data, but this new object has other attributes, one of them being the gradient. If we call the model on x to
-get the outputs and feed that in the loss function (with the expected label) we'll be able to get the derivatives of the loss function with respect to x.</p>
+get the outputs and feed that in the loss function (with the expected label) we'll be able to get the derivatives of the loss function with respect to x. We told pytorch we would
+need them when we typed requires_grad=True.</p>
 <pre class="code python literal-block">
 <span class="n">outputs</span> <span class="o">=</span> <span class="n">net</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 <span class="n">loss</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">nll_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span><span class="n">Variable</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span>
@@ -253,7 +262,7 @@ get the outputs and feed that in the loss function (with the expected label) we'
 <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 </pre>
 <p>and the derivatives of the loss with respect to x for instance, will be in the Variable x.grad (or x.grad.data if we want the values).</p>
-<p>The second thing we don't want to forget is that pytorch accumulates the gradients. That means he sums there over, each time we call this backward function. That's why we have
+<p>The second thing we don't want to forget is that pytorch accumulates the gradients. That means he sums there over, each time we call this backward function. This is why we have
 to reinitialize them via x.grad.data.zero_ before we want to calculate new derivatives.</p>
 <p>Then, the actual step of the SGD can be done automatically by the use of a pytorch optimizer. We can use the library optim to define one, and will have to pass him the
 parameters we want to change at each step (in our case, all the weights and biases in our network) and the learning rate we want to use. Here we define</p>
@@ -261,7 +270,7 @@ parameters we want to change at each step (in our case, all the weights and bias
 <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span><span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
 </pre>
 <p>Then we won't need to write the line where we subtract to each parameter the learning rate multiplied by the gradient, this will all be done by calling optimizer.step().
-To reinitialize all the gradients, we'll just have to type optimizer.zero_grad().</p>
+To reinitialize all the gradients of the parameters of our model, we'll just have to type optimizer.zero_grad().</p>
 <p>Once this is all done, we can write our training loop. It consists, for each epoch, in looking through all the data, compute the outputs of each mini-batch of inputs, compare
 them with their theoretical labels via the loss function, compute the gradients of the loss functions with respect to all the parameters and adjust them in consequence. We just
 had the computation of the accuracy to print how well we are doing at the end of each epoch.</p>

@@ -1,0 +1,330 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
+
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="This is the main hyper-parameter to set when we train a neural net, but how do you determine the best value? Here's a technique to quickly decide on one." />
+<meta name="keywords" content="SGD, Learning rate">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="How Do You Find A Good Learning Rate"/>
+<meta property="og:description" content="This is the main hyper-parameter to set when we train a neural net, but how do you determine the best value? Here's a technique to quickly decide on one."/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="/how-do-you-find-a-good-learning-rate.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-03-20 16:15:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="/author/sylvain-gugger.html">
+<meta property="article:section" content="Deep learning"/>
+<meta property="article:tag" content="SGD"/>
+<meta property="article:tag" content="Learning rate"/>
+<meta property="og:image" content="/images/profile.png">
+
+  <title>Another data science student's blog &ndash; How Do You Find A Good Learning Rate</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="https://sgugger.github.io">
+        <img src="/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="https://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="https://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
+
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="how-do-you-find-a-good-learning-rate">How Do You Find A Good Learning Rate</h1>
+    <p>
+          Posted on Tue 20 March 2018 in <a href="/category/deep-learning.html">Deep learning</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <div class="section" id="the-theory">
+<h2>The theory</h2>
+<p>How do you decide on a learning rate? If it's too slow, your neural net is going to take forever to learn (try to use <span class="math">\(10^{-5}\)</span> instead of <span class="math">\(10^{-2}\)</span> in
+<a class="reference external" href="/a-neural-net-in-pytorch.html">the previous article</a> for instance). But if it's too high, each step you take will go over the minimum and you'll never get to an acceptable loss.
+Worse, a high learning rate could lead you to an increasing loss until it reaches nan.</p>
+<p>Why is that? If your gradients are really high, then a high learning rate is going to take you to a spot that's so far away from the minimum you will probably be worse than before
+in terms of loss. Even on something as simple as a parabola, see how a high learning rate quickly gets you further and further away from the minima.</p>
+<img alt="" class="align-center" src="../images/art2_explode.png" style="width: 500px;" />
+<p>So we have to pick exactly the right value, not too high and not too low. For a long time, it's been a game of try and see, but in <a class="reference external" href="https://arxiv.org/abs/1506.01186">this article</a> another approach is presented. Over an epoch begin your SGD with a very low learning rate (like <span class="math">\(10^{-8}\)</span>) but change it
+(by multiplying it by a certain factor for instance)
+at each mini-batch until it reaches a very high value (like 1 or 10). Record the loss each time at each iteration and once you're finished, plot those losses against the learning
+rate. You'll find something like this:</p>
+<img alt="Plot of the loss against the learning rate" class="align-center" src="../images/art2_courbe_lr.png" />
+<p>The loss decreases at the beginning, then it stops and it goes back increasing, usually extremely quickly. That's because with very low learning rates, we get better and better,
+especially since we increase them. Then comes a point where we reach a value that's too high and the phenomenon shown before happens. Looking at this graph, what is the best
+learning rate to choose? Not the one corresponding to the minimum.</p>
+<p>Why? Well the learning rate that corresponds to the minimum value is already a bit too high, since we are at the edge between improving and getting all over the place.
+We want to go one order of magnitude before, a value that's still aggressive (so that we train quickly) but still on the safe side from an explosion. In the example described by
+the picture above, for instance, we don't want to pick <span class="math">\(10^{-1}\)</span> but rather <span class="math">\(10^{-2}\)</span>.</p>
+<p>This method can be applied on top of every variant of SGD, and any kind of network. We just have to go through one epoch (usually less) and record the values of our loss
+to get the data for our plot.</p>
+</div>
+<div class="section" id="in-practice">
+<h2>In practice</h2>
+<p>How do we code this? Well it's pretty simple when we use the fastai library. As detailed in the <a class="reference external" href="http://course.fast.ai/lessons/lesson1.html">first lesson</a>, if we have built a learner object for our model, we just have
+to type</p>
+<pre class="code python literal-block">
+<span class="n">learner</span><span class="o">.</span><span class="n">lr_find</span><span class="p">()</span>
+<span class="n">learner</span><span class="o">.</span><span class="n">sched</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre>
+<p>and we'll get a picture very similar as then one above. Let's do it ourselves though, to be sure we have understood everything there is behind the scenes. It's going to be pretty
+easy since we just have to adapt the training loop seen in <a class="reference external" href="/a-neural-net-in-pytorch.html">that article</a> there is just a few tweaks.</p>
+<p>The first one is that we won't really plot the loss of each mini-batch, but some smoother version of it. If we tried to plot the raw loss, we would end up with a graph like
+this one:</p>
+<img alt="Plot of the loss against the learning rate" class="align-center" src="../images/art2_loss_vs_lr.png" />
+<p>Even if we can see a global trend (and that's because I truncated the part where it goes up to infinity on the right), it's not as clear as the previous graph. To smooth those
+losses we will take their exponentially weighed averages. It sounds far more complicated that it is and if you're familiar with the momentum variant of SGD it's exactly
+the same. At each step where we get a loss, we define this average loss by</p>
+<div class="math">
+\begin{equation*}
+\hbox{avg loss} = \beta * \hbox{old avg loss} + (1-\beta) * \hbox{loss}
+\end{equation*}
+</div>
+<p>where <span class="math">\(\beta\)</span> is a parameter we get to pick between 0 and 1. This way the average losses will reduce the noise and give us a smoother graph where we'll definitely be able to
+see the trend. This also also explains why we are <em>too late</em> when we reach the minimum in our first curve: this averaged loss will stay low when our losses start to explode, and
+it'll take a bit of time before it starts to really increase.</p>
+<p>If you don't see the exponentially weighed behind this average, it's because it's hidden in our recursive formula. If our losses are <span class="math">\(l_{0},\dots,l_{n}\)</span> then the
+exponentially weighed loss at a given index <span class="math">\(i\)</span> is</p>
+<div class="math">
+\begin{equation*}
+\hbox{avg loss}_{i} = (1-\beta) \beta^{i} l_{0} + (1-\beta) \beta^{i-1} l_{1} + \cdots + (1-\beta) \beta l_{i-1} + (1-\beta) l_{i}
+\end{equation*}
+</div>
+<p>so the weights are all powers of <span class="math">\(\beta\)</span>. If remember the formula giving the sum of a geometric sequence, the sum of our weights is</p>
+<div class="math">
+\begin{equation*}
+(1-\beta) \beta^{i} + (1-\beta) \beta^{i-1} + \cdots + (1-\beta) \beta + (1-\beta) = (1-\beta) * \frac{1-\beta^{i+1}}{1-\beta} = 1-\beta^{i+1}
+\end{equation*}
+</div>
+<p>so to really be an average, we have to divide our average loss by this factor. In the end, the loss we will plot is</p>
+<div class="math">
+\begin{equation*}
+\hbox{smoothed loss}_{i} = \frac{\hbox{avg loss}_{i}}{1-\beta^{i+1}}.
+\end{equation*}
+</div>
+<p>This doesn't really change a thing when <span class="math">\(i\)</span> is big, because <span class="math">\(\beta^{i+1}\)</span> will be very close to 0. But for the first values of <span class="math">\(i\)</span>, it insures we get better
+results.</p>
+<p>The next thing we will change in our training loop is that we probably won't need to do one whole epoch: if the loss is starting to explode, we probably don't want to continue.
+The criteria that's implemented in the fastai library and that seems to work pretty well is:</p>
+<div class="math">
+\begin{equation*}
+\hbox{current smoothed loss} &gt; 4 \times \hbox{minimum smoothed loss}
+\end{equation*}
+</div>
+<p>Lastly, we need just a tiny bit of math to figure out by how much to multiply our learning rate at each step. If we begin with a learning rate of <span class="math">\(\hbox{lr}_{0}\)</span> and
+multiply it at each step by <span class="math">\(q\)</span> then at the <span class="math">\(i\)</span>-th step, our learning rate will be</p>
+<div class="math">
+\begin{equation*}
+\hbox{lr}_{i} = \hbox{lr}_{0} \times q^{i}
+\end{equation*}
+</div>
+<p>Now, we want to figure out <span class="math">\(q\)</span> knowing <span class="math">\(\hbox{lr}_{0}\)</span> and <span class="math">\(\hbox{lr}_{N-1}\)</span> (the final value after <span class="math">\(N\)</span> steps) so we isolate it:</p>
+<div class="math">
+\begin{equation*}
+\hbox{lr}_{N-1} = \hbox{lr}_{0} \times q^{N-1} \quad \Longleftrightarrow \quad q^{N-1} = \frac{\hbox{lr}_{N-1}}{\hbox{lr}_{0}} \quad \Longleftrightarrow \quad q = \left ( \frac{\hbox{lr}_{N-1}}{\hbox{lr}_{0}}  \right )^{\frac{1}{N-1}}
+\end{equation*}
+</div>
+<p>With all of this, we're ready to alter our previous training loop. This all supposes that you've got a neural net defined (in the variable called net), a data loader called
+trn_loader, an optimizer and a loss function (called criterion).</p>
+<pre class="code python literal-block">
+<span class="k">def</span> <span class="nf">find_lr</span><span class="p">(</span><span class="n">init_value</span> <span class="o">=</span> <span class="mf">1e-8</span><span class="p">,</span> <span class="n">final_value</span><span class="o">=</span><span class="mf">10.</span><span class="p">,</span> <span class="n">beta</span> <span class="o">=</span> <span class="mf">0.98</span><span class="p">):</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">trn_loader</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+    <span class="n">mult</span> <span class="o">=</span> <span class="p">(</span><span class="n">final_value</span> <span class="o">/</span> <span class="n">init_value</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">num</span><span class="p">)</span>
+    <span class="n">lr</span> <span class="o">=</span> <span class="n">init_value</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">'lr'</span><span class="p">]</span> <span class="o">=</span> <span class="n">lr</span>
+    <span class="n">avg_loss</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="n">best_loss</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="n">batch_num</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">log_lrs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">trn_loader</span><span class="p">:</span>
+        <span class="n">batch_num</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1">#As before, get the loss for this mini-batch of inputs/outputs</span>
+        <span class="n">inputs</span><span class="p">,</span><span class="n">labels</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">Variable</span><span class="p">(</span><span class="n">inputs</span><span class="p">),</span> <span class="n">Variable</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="n">net</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+        <span class="c1">#Compute the smoothed loss</span>
+        <span class="n">avg_loss</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">avg_loss</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">beta</span><span class="p">)</span> <span class="o">*</span><span class="n">loss</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">smoothed_loss</span> <span class="o">=</span> <span class="n">avg_loss</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="o">**</span><span class="n">batch_num</span><span class="p">)</span>
+        <span class="c1">#Stop if the loss is exploding</span>
+        <span class="k">if</span> <span class="n">batch_num</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">smoothed_loss</span> <span class="o">&gt;</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">best_loss</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">log_lrs</span><span class="p">,</span> <span class="n">losses</span>
+        <span class="c1">#Record the best loss</span>
+        <span class="k">if</span> <span class="n">smoothed_loss</span> <span class="o">&lt;</span> <span class="n">best_loss</span> <span class="ow">or</span> <span class="n">batch_num</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">best_loss</span> <span class="o">=</span> <span class="n">smoothed_loss</span>
+        <span class="c1">#Store the values</span>
+        <span class="n">losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">smoothed_loss</span><span class="p">)</span>
+        <span class="n">log_lrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">lr</span><span class="p">))</span>
+        <span class="c1">#Do the SGD step</span>
+        <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+        <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+        <span class="c1">#Update the lr for the next step</span>
+        <span class="n">lr</span> <span class="o">*=</span> <span class="n">mult</span>
+        <span class="n">optimizer</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">'lr'</span><span class="p">]</span> <span class="o">=</span> <span class="n">lr</span>
+    <span class="k">return</span> <span class="n">log_lrs</span><span class="p">,</span> <span class="n">losses</span>
+</pre>
+<p>Note that the learning rate is found into the dictionary stored in optimizer.param_groups. If we go back to our notebook with the MNIST data set, we can then define our
+neural net, an optimizer and the loss function.</p>
+<pre class="code python literal-block">
+<span class="n">net</span> <span class="o">=</span> <span class="n">SimpleNeuralNet</span><span class="p">(</span><span class="mi">28</span><span class="o">*</span><span class="mi">28</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span><span class="n">lr</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
+<span class="n">criterion</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">nll_loss</span>
+</pre>
+<p>And after this we can call this function to find our learning rate and plot the results.</p>
+<pre class="code python literal-block">
+<span class="n">logs</span><span class="p">,</span><span class="n">losses</span> <span class="o">=</span> <span class="n">find_lr</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">logs</span><span class="p">[</span><span class="mi">10</span><span class="p">:</span><span class="o">-</span><span class="mi">5</span><span class="p">],</span><span class="n">losses</span><span class="p">[</span><span class="mi">10</span><span class="p">:</span><span class="o">-</span><span class="mi">5</span><span class="p">])</span>
+</pre>
+<p>The skip of the first 10 values and the last 5 is another thing that the fastai library does by default, to remove the initial and final high losses and focus on the interesting
+parts of the graph. I added all of this at the end of the previous notebook, and you can find it <a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/Learning%20rate%20finder.ipynb">here</a>.</p>
+<p>This code modifies the neural net and its optimizer, so we have to be careful to reinitialize those after doing this, to the best value we can. An amelioration to the code
+would be to save it then reload the initial state when we're done (which is what the fastai library does).</p>
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="/tag/sgd.html">SGD</a>
+      <a href="/tag/learning-rate.html">Learning rate</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "",
+  "image": "/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>

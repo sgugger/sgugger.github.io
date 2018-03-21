@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - General</title><link href="/" rel="alternate"></link><link href="/feeds/general.atom.xml" rel="self"></link><id>/</id><updated>2018-03-12T16:57:00-04:00</updated><entry><title>Why Write A Blog?</title><link href="/why-write-a-blog.html" rel="alternate"></link><published>2018-03-12T16:57:00-04:00</published><updated>2018-03-12T16:57:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-03-12:/why-write-a-blog.html</id><summary type="html">&lt;p&gt;I've just been accepted to follow the 2018 version of Deep learning - part 2 on &lt;a class="reference external" href="http://fast.ai/"&gt;fast.ai&lt;/a&gt;, and I'm pretty excited about it. As I'm reaching the stage at which this is becoming more
+than a hobby and the plan is to switch careers to Data Science, I've taken the …&lt;/p&gt;</summary><content type="html">&lt;p&gt;I've just been accepted to follow the 2018 version of Deep learning - part 2 on &lt;a class="reference external" href="http://fast.ai/"&gt;fast.ai&lt;/a&gt;, and I'm pretty excited about it. As I'm reaching the stage at which this is becoming more
+than a hobby and the plan is to switch careers to Data Science, I've taken the time to ponder all the alternatives and I've settled on self-studying.&lt;/p&gt;
+&lt;p&gt;Which brings me to this blog. How do you measure your progress when there's no one to grade your work? One solution I've found is to write about what I learn. Nothing here is going
+to be new, I simply intend to explain in my own words concepts that have been detailed elsewhere (probably with fewer grammatical mistakes!). I could say that
+my only reader is going to be my mom, but she doesn't read English, so that won't even be the case. As an ex-teacher, I simply believe you've
+never completely mastered something until you've taught it to someone else.&lt;/p&gt;
+&lt;p&gt;For now the curriculum I have settled on is:&lt;/p&gt;
+&lt;ul class="simple"&gt;
+&lt;li&gt;the deep learning course of &lt;a class="reference external" href="http://fast.ai/"&gt;fast.ai&lt;/a&gt; (part 1 and 2);&lt;/li&gt;
+&lt;li&gt;the machine learning course of &lt;a class="reference external" href="http://fast.ai/"&gt;fast.ai&lt;/a&gt;;&lt;/li&gt;
+&lt;li&gt;the online book of &lt;a class="reference external" href="http://neuralnetworksanddeeplearning.com/"&gt;Michael Nielsen&lt;/a&gt;;&lt;/li&gt;
+&lt;li&gt;Python for data analysis.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;I will update this list as it grows. I will try to get to the bottom of all the concepts I learn, and I intend to code everything from scratch. Since the
+fast.ai library is wrapped on top of pytorch, this is the library I will mostly use, along with numpy and pandas. All these articles will be in the Deep learning category.&lt;/p&gt;
+&lt;p&gt;I also plan to play along with different approaches and parameters, to highlight the importance of each decision we make when building a model. To that end, I'll design and
+implement as many experiments as I can and put the results in the Experiments category.&lt;/p&gt;
+&lt;p&gt;Explaining things is all very good, but it's even better to show what you can actually do. I plan to enter a few &lt;a class="reference external" href="http://kaggle.com/"&gt;Kaggle&lt;/a&gt; competitions, hopefully achieve a good ranking,
+and I will also use some of the articles of this blog as a portfolio to demonstrate my skills. Those articles will be in the Portfolio category.&lt;/p&gt;
+</content></entry></feed>

@@ -10,6 +10,7 @@
   <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
 
 
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
 
 
 
@@ -24,7 +25,7 @@
 <meta name="description" content="What is deep learning? It's a class of algorithms where you train something called a neural net to complete a specific task. Let's begin with a general overview and we will dig into the details in subsequent articles." />
 <meta name="keywords" content="Neural Net, SGD">
 <meta property="og:site_name" content="Another data science student's blog"/>
-<meta property="og:title" content="What is deep learning?"/>
+<meta property="og:title" content="What Is Deep Learning?"/>
 <meta property="og:description" content="What is deep learning? It's a class of algorithms where you train something called a neural net to complete a specific task. Let's begin with a general overview and we will dig into the details in subsequent articles."/>
 <meta property="og:locale" content="en_US"/>
 <meta property="og:url" content="/what-is-deep-learning.html"/>
@@ -37,7 +38,7 @@
 <meta property="article:tag" content="SGD"/>
 <meta property="og:image" content="/images/profile.png">
 
-  <title>Another data science student's blog &ndash; What is deep learning?</title>
+  <title>Another data science student's blog &ndash; What Is Deep Learning?</title>
 
 </head>
 <body>
@@ -51,7 +52,7 @@
 
       <nav>
         <ul class="list">
-          <li><a href="/pages/about-me.html#about-me">About me</a></li>
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
 
           <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
         </ul>
@@ -75,12 +76,14 @@
       <a href="/tags.html">Tags</a>
       <a href="/archives.html">Archives</a>
 
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
 
     </nav>
 
 <article class="single">
   <header>
-    <h1 id="what-is-deep-learning">What is deep learning?</h1>
+    <h1 id="what-is-deep-learning">What Is Deep Learning?</h1>
     <p>
           Posted on Tue 13 March 2018 in <a href="/category/deep-learning.html">Deep learning</a>
 
@@ -109,8 +112,8 @@ y = f \left ( w_{1}x_{1} + \cdots + w_{n}x_{n} \right )
 y = f \left ( \sum_{i=1}^{n} w_{i} x_{i} \right ).
 \end{equation*}
 </div>
-<p>Here <span class="math">\(y\)</span> is the output (or activation) and <span class="math">\(f\)</span> a function called the activation function. A few classical activation functions are the rectified linear unit (ReLU), the
-sigmoid function or the hyperbolic tan function:</p>
+<p>Here <span class="math">\(y\)</span> is the output and <span class="math">\(f\)</span> a function called the activation function. A few classical activation functions are the rectified linear unit (ReLU), the
+sigmoid function or the hyperbolic tangent function:</p>
 <img alt="Graph of the ReLU function" class="align-center" src="../images/art1_relu.png" style="width: 500px;" />
 <div class="math">
 \begin{equation*}
@@ -144,9 +147,9 @@ y = f \left ( \sum_{i=1}^{n} w_{i} x_{i} + b \right ).
 \end{equation*}
 </div>
 <p>If we consider the case of a ReLU activation function (which basically replaces the negative by zero), the opposite of this bias is then the minimum value to reach to get an
-activation that isn't nil.</p>
+output that isn't nil.</p>
 <p>So that's one neuron. In a neural net, we have quite a few of them, regrouped in what we call layers. An example of neural net with a single layer would look like this:</p>
-<img alt="Neural net with one layer" class="align-center" src="../images/art1_simplennet.png" />
+<img alt="Neural net with one layer" class="align-center" src="../images/art1_simplennet.jpg" />
 <p>So let's say we want to build a neural net with an input size <span class="math">\(n_{in}\)</span> and an output size <span class="math">\(n_{out}\)</span>. We then must have <span class="math">\(n_{out}\)</span> neurons.
 Each one of our neurons then has <span class="math">\(n_{in}\)</span> inputs, so it must have as many weights. If we consider the neuron number <span class="math">\(i\)</span> we can call this weights
 <span class="math">\(w_{1,i},\dots,w_{n_{in},i}\)</span> and the bias of the neuron <span class="math">\(b_{i}\)</span> then the output number <span class="math">\(i\)</span> is</p>
@@ -191,7 +194,7 @@ X_{1}W_{2} + B_{2} = X_{0}W'_{1} + B'_{1}
 called the parameters of our model) are initialized at random, so initially, the output the neural net will compute has nothing to do with what we would expect. It's through
 a process called training that we will make our model better.</p>
 <p>To do this, we need a set of labeled data, which is a collection of inputs where we know the desired output, for instance, in an image classification problem, pictures that have
-been classified for us. We can then evaluate how badly our model is doing by computing all the outputs and comparing them to the theoretical ones. To give a value to this, we*
+been classified for us. We can then evaluate how badly our model is doing by computing all the outputs and comparing them to the theoretical ones. To give a value to this, we
 use an error function.</p>
 <p>An error function that is often used is called MSE for Mean Squared Errors. If <span class="math">\(Y\)</span> is the output we computed and <span class="math">\(Z\)</span> the one we should have found, one way to see
 how far away <span class="math">\(Y\)</span> is from <span class="math">\(Z\)</span> is to take the mean of the errors between each coordinate <span class="math">\(y_{i}\)</span> and <span class="math">\(z_{i}\)</span>. This error can be represented by
@@ -215,8 +218,8 @@ that it's easy to differentiate. The total loss is always taken by averaging the
 <p>Since the network's parameters are initialized at random, this loss will be pretty bad at the beginning. Training is a process during which the computer will compute this loss,
 analyze why it's so bad, and try to do a little bit better the next time. More specifically, we will try to determine a new set of parameters (all the weights and the biases)
 that will give us a slightly better loss. Then by repeating this over and over again, we should find the set of parameters that minimize this loss.</p>
-<p>The exciting thing with neural networks, is that even if they learn on a specific dataset, they tend to generalize pretty well (and there's a bun of techniques we can use to
-make sure the model doesn't overfit to the training data). In image recognition for instance, those kinds of models can have better accuracy than humans.</p>
+<p>The exciting thing with neural networks, is that even if they learn on a specific dataset, they tend to generalize pretty well (and there's a bunch of techniques we can use to
+make sure the model doesn't overfit to the training data). In image recognition for instance, those kinds of models can have better accuracy than humans do.</p>
 <p>To minimize this loss, we use an algorithm called SGD for Stochastic Gradient Descent. The idea is fairly simple: if you're in the mountains and looking for the point that is
 at the lowest altitude, you just take a step down, and a step down, and so forth until you reach that particular spot. This is going to be exactly the same for our neural
 net and its loss. To minimize that function, we will take a little step down.</p>
@@ -224,7 +227,7 @@ net and its loss. To minimize that function, we will take a little step down.</p
 the way down for a function of <span class="math">\(t\)</span> variables (which is the direction where it's steeper) is given by the opposite of the gradient. This is the vector</p>
 <div class="math">
 \begin{equation*}
-\overlongrightarrow{\hbox{grad}} \hbox{loss} = \left ( \frac{\partial \hbox{loss}}{\partial p_{1}}, \dots, \frac{\partial \hbox{loss}}{\partial p_{t}} \right )
+\overrightarrow{\hbox{grad}}(\hbox{loss}) = \left ( \frac{\partial \hbox{loss}}{\partial p_{1}}, \dots, \frac{\partial \hbox{loss}}{\partial p_{t}} \right )
 \end{equation*}
 </div>
 <p>To update our parameters, which just have to take a step along the opposite of the gradients, which means subtract to the vector <span class="math">\((p_{1},\dots,p_{t})\)</span> a little bit
@@ -239,22 +242,22 @@ This little bit is called the learning rate, and if we note it <span class="math
 rate, which would make us miss the spot where our function was lowest, but we'll get back to this later). So by repeating this step over and over again, we will eventually get
 to a minimum of our loss function, and a very good model.</p>
 <p>This explains the Gradient Descent in SGD but not the Stochastic part. The random part appears by necessity: very often our training dataset has a lot of labeled inputs. It can
-be as big as a million images. That's why, for a step of gradient descent, we don't compute the total loss, but rather the loss on a smaller sample called a minibatch. If we
-choose to take the sample <span class="math">\((X_{k_{1}},Z_{k_{1}}),\dots,(X_{k_{mb}},Z_{k_{mb}})\)</span> the loss on this minibatch will just be:</p>
+be as big as a million images. That's why, for a step of gradient descent, we don't compute the total loss, but rather the loss on a smaller sample called a mini-batch. If we
+choose to take the sample <span class="math">\((X_{k_{1}},Z_{k_{1}}),\dots,(X_{k_{mb}},Z_{k_{mb}})\)</span> the loss on this mini-batch will just be:</p>
 <div class="math">
 \begin{equation*}
 \hbox{loss}' = \frac{1}{mb} \sum_{q=1}^{mb} \hbox{MSE}(Y_{k_{q}},Z_{k_{q}})
 \end{equation*}
 </div>
-<p>The idea is that this new loss will have a gradient that is close to the gradient of the real loss (since we're averaging on a minibatch and not just taking one sample) but with
-fewer computation time. In practice, to make sure we still see all of the data, we don't overlap the minibatches, taking different parts of our training set each time we randomly
-pick a minibatch, and updating all the parameters of our network each time, up until we have seen all the inputs once. This whole process is called an epoch.</p>
+<p>The idea is that this new loss will have a gradient that is close to the gradient of the real loss (since we're averaging on a mini-batch and not just taking one sample) but with
+fewer computation time. In practice, to make sure we still see all of the data, we don't overlap the mini-batches, taking different parts of our training set each time we randomly
+pick a mini-batch, and updating all the parameters of our network each time, up until we have seen all the inputs once. This whole process is called an epoch.</p>
 <p>We can then run as many epochs as we want (or as we have time to), as long as the learning rate is low enough, the neural network should progress and become better each time.
 The gradient may seem a bit complicated to evaluate, but it can be computed exactly by using the chain rule, going backward from the end (compute the derivatives of the loss
 function with respects to the obtained outputs), through each layer, up until the beginning.</p>
 <p>That is all the general theory behind a neural network. I will dig more into the details in further articles to explain the different layers we can find, the little tweaks we can
 add to SGD to make it train faster, how to set the learning rate and how to compute those gradients. We'll see how to code simple and more complex examples of neural networks
-in pytorch, but you can already jump a bit ahead and look at the first video of the deep-learning course of fast.ai, and train in a few minutes a neural net recognizing cats from
+in pytorch, but you can already jump a bit ahead and look at the <a class="reference external" href="http://course.fast.ai/lessons/lesson1.html">first video</a> of the deep-learning course of fast.ai, and train in a few minutes a neural net recognizing cats from
 dogs with 99% accuracy.</p>
 </div>
 <script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
