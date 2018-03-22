@@ -87,6 +87,21 @@ multiply it at each step by &lt;span class="math"&gt;\(q\)&lt;/span&gt; then at 
 \hbox{lr}_{N-1} = \hbox{lr}_{0} \times q^{N-1} \quad \Longleftrightarrow \quad q^{N-1} = \frac{\hbox{lr}_{N-1}}{\hbox{lr}_{0}} \quad \Longleftrightarrow \quad q = \left ( \frac{\hbox{lr}_{N-1}}{\hbox{lr}_{0}}  \right )^{\frac{1}{N-1}}
 \end{equation*}
 &lt;/div&gt;
+&lt;p&gt;Why go through this trouble and not just take learning rates by regularly splitting the interval between our initial value and our final value? We have to remember we will
+plot the loss against the logs of the learning rates at the end, and if we take the log of our &lt;span class="math"&gt;\(\hbox{lr}_{i}\)&lt;/span&gt; we have&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\log(\hbox{lr}_{i}) = \log(\hbox{lr}_{0}) + i \log(q) = \log(\hbox{lr}_{0}) + i\frac{\log(\hbox{lr}_{N-1}) - \log(\hbox{lr}_{0})}{N-1},
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;which corresponds to regularly splitting the interval between our initial value and our final value... but on a log scale! That way we're sure to have evenly spaced points on our
+curve, whereas by taking&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\hbox{lr}_{i} = \hbox{lr}_{0} + i \frac{\hbox{lr}_{N-1} - \hbox{lr}_{0}}{N-1}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;we would have had all the points concentrated near the end (since &lt;span class="math"&gt;\(\hbox{lr}_{N-1}\)&lt;/span&gt; is much bigger than &lt;span class="math"&gt;\(\hbox{lr}_{0}\)&lt;/span&gt;).&lt;/p&gt;
 &lt;p&gt;With all of this, we're ready to alter our previous training loop. This all supposes that you've got a neural net defined (in the variable called net), a data loader called
 trn_loader, an optimizer and a loss function (called criterion).&lt;/p&gt;
 &lt;pre class="code python literal-block"&gt;

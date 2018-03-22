@@ -61,6 +61,7 @@
       <ul class="social">
         <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
         <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/GuggerSylvain" target="_blank"><i class="fa fa-twitter"></i></a></li>
       </ul>
     </div>
 
@@ -180,6 +181,21 @@ multiply it at each step by <span class="math">\(q\)</span> then at the <span cl
 \hbox{lr}_{N-1} = \hbox{lr}_{0} \times q^{N-1} \quad \Longleftrightarrow \quad q^{N-1} = \frac{\hbox{lr}_{N-1}}{\hbox{lr}_{0}} \quad \Longleftrightarrow \quad q = \left ( \frac{\hbox{lr}_{N-1}}{\hbox{lr}_{0}}  \right )^{\frac{1}{N-1}}
 \end{equation*}
 </div>
+<p>Why go through this trouble and not just take learning rates by regularly splitting the interval between our initial value and our final value? We have to remember we will
+plot the loss against the logs of the learning rates at the end, and if we take the log of our <span class="math">\(\hbox{lr}_{i}\)</span> we have</p>
+<div class="math">
+\begin{equation*}
+\log(\hbox{lr}_{i}) = \log(\hbox{lr}_{0}) + i \log(q) = \log(\hbox{lr}_{0}) + i\frac{\log(\hbox{lr}_{N-1}) - \log(\hbox{lr}_{0})}{N-1},
+\end{equation*}
+</div>
+<p>which corresponds to regularly splitting the interval between our initial value and our final value... but on a log scale! That way we're sure to have evenly spaced points on our
+curve, whereas by taking</p>
+<div class="math">
+\begin{equation*}
+\hbox{lr}_{i} = \hbox{lr}_{0} + i \frac{\hbox{lr}_{N-1} - \hbox{lr}_{0}}{N-1}
+\end{equation*}
+</div>
+<p>we would have had all the points concentrated near the end (since <span class="math">\(\hbox{lr}_{N-1}\)</span> is much bigger than <span class="math">\(\hbox{lr}_{0}\)</span>).</p>
 <p>With all of this, we're ready to alter our previous training loop. This all supposes that you've got a neural net defined (in the variable called net), a data loader called
 trn_loader, an optimizer and a loss function (called criterion).</p>
 <pre class="code python literal-block">
