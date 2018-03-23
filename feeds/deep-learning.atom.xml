@@ -49,9 +49,12 @@ it'll take a bit of time before it starts to really increase.&lt;/p&gt;
 &lt;p&gt;If you don't see the exponentially weighed behind this average, it's because it's hidden in our recursive formula. If our losses are &lt;span class="math"&gt;\(l_{0},\dots,l_{n}\)&lt;/span&gt; then the
 exponentially weighed loss at a given index &lt;span class="math"&gt;\(i\)&lt;/span&gt; is&lt;/p&gt;
 &lt;div class="math"&gt;
-\begin{equation*}
-\hbox{avg loss}_{i} = (1-\beta) \beta^{i} l_{0} + (1-\beta) \beta^{i-1} l_{1} + \cdots + (1-\beta) \beta l_{i-1} + (1-\beta) l_{i}
-\end{equation*}
+\begin{align*}
+\hbox{avg loss}_{i} &amp;amp;= \beta \hbox{avg loss}_{i-1} + (1-\beta) l_{i} = \beta^{2} \hbox{avg loss}_{i-2} + \beta(1-\beta) l_{i-1} +  \beta l_{i} \\
+&amp;amp;= \beta^{3} \hbox{avg loss}_{i-3} + \beta^{2}(1-\beta) l_{i-2} + \beta(1-\beta) l_{i-1} +  \beta l_{i} \\
+&amp;amp;\vdots \\
+&amp;amp;= (1-\beta) \beta^{i} l_{0} + (1-\beta) \beta^{i-1} l_{1} + \cdots + (1-\beta) \beta l_{i-1} + (1-\beta) l_{i}
+\end{align*}
 &lt;/div&gt;
 &lt;p&gt;so the weights are all powers of &lt;span class="math"&gt;\(\beta\)&lt;/span&gt;. If remember the formula giving the sum of a geometric sequence, the sum of our weights is&lt;/p&gt;
 &lt;div class="math"&gt;
@@ -66,7 +69,7 @@ exponentially weighed loss at a given index &lt;span class="math"&gt;\(i\)&lt;/s
 \end{equation*}
 &lt;/div&gt;
 &lt;p&gt;This doesn't really change a thing when &lt;span class="math"&gt;\(i\)&lt;/span&gt; is big, because &lt;span class="math"&gt;\(\beta^{i+1}\)&lt;/span&gt; will be very close to 0. But for the first values of &lt;span class="math"&gt;\(i\)&lt;/span&gt;, it insures we get better
-results.&lt;/p&gt;
+results. This is called the bias-corrected version of our average.&lt;/p&gt;
 &lt;p&gt;The next thing we will change in our training loop is that we probably won't need to do one whole epoch: if the loss is starting to explode, we probably don't want to continue.
 The criteria that's implemented in the fastai library and that seems to work pretty well is:&lt;/p&gt;
 &lt;div class="math"&gt;
