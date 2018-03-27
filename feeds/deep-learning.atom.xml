@@ -1,5 +1,394 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Deep learning</title><link href="/" rel="alternate"></link><link href="/feeds/deep-learning.atom.xml" rel="self"></link><id>/</id><updated>2018-03-20T16:15:00-04:00</updated><entry><title>How Do You Find A Good Learning Rate</title><link href="/how-do-you-find-a-good-learning-rate.html" rel="alternate"></link><published>2018-03-20T16:15:00-04:00</published><updated>2018-03-20T16:15:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-03-20:/how-do-you-find-a-good-learning-rate.html</id><summary type="html">&lt;p class="first last"&gt;This is the main hyper-parameter to set when we train a neural net, but how do you determine the best value? Here's a technique to quickly decide on one.&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Deep learning</title><link href="/" rel="alternate"></link><link href="/feeds/deep-learning.atom.xml" rel="self"></link><id>/</id><updated>2018-03-20T16:15:00-04:00</updated><entry><title>A simple neural net in numpy</title><link href="/a-simple-neural-net-in-numpy.html" rel="alternate"></link><published>2018-03-20T16:15:00-04:00</published><updated>2018-03-20T16:15:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-03-20:/a-simple-neural-net-in-numpy.html</id><summary type="html">&lt;p class="first last"&gt;Now that we have seen how to build a neural net in pytorch, let's try to take it a step further and try to do the same thing in numpy.&lt;/p&gt;
+</summary><content type="html">&lt;p&gt;Numpy doesn't have GPU-acceleration, so this is just to force us to understand what's going on behind the scenes, and how to code the things pytorch does automatically.
+The main thing we have to dig into is how it computes the gradient of the loss with respect to all the parameters of our neural net.&lt;/p&gt;
+&lt;div class="section" id="back-propagation"&gt;
+&lt;h2&gt;Back propagation&lt;/h2&gt;
+&lt;p&gt;If we take the same example as in &lt;a class="reference external" href="/a-neural-net-in-pytorch.html"&gt;this article&lt;/a&gt; our neural network has two linear layers, the first activation function being a ReLU and
+the last one softmax (or log softmax) and the loss function the Cross Entropy.
+If we really wanted to, we could write down the (horrible) formula that gives the loss in terms of our inputs, the theoretical labels and
+all the parameters of the neural net, then compute the derivatives with respect to each weight and each bias, and finally, implement the corresponding formulas.&lt;/p&gt;
+&lt;p&gt;Needless to say that would be painful (though what we'll do still is), and not very helpful in general since each time we change our network, we would have to redo the whole process. There is a smarter way
+to go that relies on the chain rule. Basically, our loss function is just a composition of simpler functions, let's say:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\hbox{loss} = f_{1} \circ f_{2} \circ f_{3} \circ \cdots \circ f_{p}(x)
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;where &lt;span class="math"&gt;\(f_{1}\)&lt;/span&gt; would be the Cross Entropy, &lt;span class="math"&gt;\(f_{2}\)&lt;/span&gt; our softmax activation, &lt;span class="math"&gt;\(f_{3}\)&lt;/span&gt; the last linear layer and so on... Furthermore, let's note&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\left \{ \begin{array}{l} x_{1} = f_{p}(x) \\ x_{2} = f_{p-1}(f_{p}(x)) \\ \vdots \\ x_{p} = f_{1} \circ f_{2} \circ f_{3} \circ \cdots \circ f_{p}(x) \end{array} \right .
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;Then our loss is simply &lt;span class="math"&gt;\(x_{p}\)&lt;/span&gt;. We can compute (almost) easily the derivatives of all the &lt;span class="math"&gt;\(f_{i}\)&lt;/span&gt; (because they are the simple parts composing our loss function) so
+we will start from the very end and go backward until we reach &lt;span class="math"&gt;\(x_{0} = x\)&lt;/span&gt;. At the end, we have &lt;span class="math"&gt;\(x_{p} = f_{p}(x_{p-1})\)&lt;/span&gt; so&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x_{p-1}} = \frac{\partial f_{p}}{\partial x_{p-1}}(x_{p-1})
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;Then &lt;span class="math"&gt;\(x_{p-1} = f_{p-1}(x_{p-2})\)&lt;/span&gt; so by the chain rule&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x_{p-2}} = \frac{\partial \hbox{loss}}{\partial x_{p-1}} \times \frac{\partial f_{p-1}}{\partial x_{p-2}}(x_{p-2}) = \frac{\partial f_{p}}{\partial x_{p-1}} \times \frac{\partial f_{p-1}}{\partial x_{p-2}}(x_{p-2})
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;and so forth. In practice, this is just a tinier bit more complicated than this when the function &lt;span class="math"&gt;\(f_{i}\)&lt;/span&gt; depends on more than one variable, but we will study that in
+details when we need it (for the softmax and a linear layer).&lt;/p&gt;
+&lt;p&gt;To code this in a flexible manner, and since I need some training in Oriented Object Programming in Python, we will define each tiny bit of our neural network as a class.
+Each one will have a forward method (that gives the result of an input going through that layer or activation function) and a backward method (that will compute the step
+in the back propagation of going from after this layer/activation to before). The forward method will get the output of the last part of the neural net to give its output.&lt;/p&gt;
+&lt;p&gt;The backward method will get the derivatives of the loss function with respect to the next part of the layer and will have to compute the derivatives of the loss function
+with regards to the inputs it received. If that sounds unclear, reread this after the next paragraph and I hope it'll make more sense.&lt;/p&gt;
+&lt;p&gt;It sounds complicated but it's not that difficult, just a bit of math to bear with. Our hard bits will be the linear layer and the softmax activation, so let's keep them for the end.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="activation-function"&gt;
+&lt;h2&gt;Activation function&lt;/h2&gt;
+&lt;p&gt;If &lt;span class="math"&gt;\(f\)&lt;/span&gt; is an activation function, it receives the result of a layer &lt;span class="math"&gt;\(x\)&lt;/span&gt; and is applied element-wise to compute the output which is &lt;span class="math"&gt;\(y = f(x)\)&lt;/span&gt;. In
+practice, &lt;span class="math"&gt;\(x\)&lt;/span&gt; is a whole mini-batch of inputs, so it's an array with as many rows as the size of our mini-batch and as many columns as there were neurons in
+the previous layer. It's not really important since the function is applied element-wise, so we can safely imagine that &lt;span class="math"&gt;\(x\)&lt;/span&gt; is just one entry of the array.&lt;/p&gt;
+&lt;p&gt;The forward pass is straightforward, and the back propagation step isn't really complicated either. If we know the derivative of our loss function with respect to &lt;span class="math"&gt;\(y\)&lt;/span&gt;, then&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x} = \frac{\partial \hbox{loss}}{\partial y} \times \frac{\partial f}{\partial x} = \frac{\partial \hbox{loss}}{\partial y} \times f'(x).
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;where &lt;span class="math"&gt;\(f'\)&lt;/span&gt; is the derivative of the function &lt;span class="math"&gt;\(f\)&lt;/span&gt;. So if we receive a variable named &lt;span class="math"&gt;\(\hbox{grad}\)&lt;/span&gt; that contains all the derivatives of the loss with respect
+to all the &lt;span class="math"&gt;\(y\)&lt;/span&gt;, the derivatives of the loss with respect to all the &lt;span class="math"&gt;\(x\)&lt;/span&gt; is simply&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+f'(x) \odot \hbox{grad}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;where &lt;span class="math"&gt;\(f'\)&lt;/span&gt; is applied element-wise and &lt;span class="math"&gt;\(\odot\)&lt;/span&gt; represents the product of the two arrays element-wise.
+Note that we will need to know &lt;span class="math"&gt;\(x\)&lt;/span&gt; when it's time for the back propagation step, so let's save it when we do the forward pass
+inside a parameter of our class.&lt;/p&gt;
+&lt;p&gt;The easier to implement will be the ReLU activation function. Since we have&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\hbox{ReLU}(x) = \max(0,x) = \left \{ \begin{array}{l} x \hbox{ si } x &amp;gt; 0 \\ 0 \hbox{ sinon} \end{array} \right .
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;we can compute its derivative very easily:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\hbox{ReLU}'(x) = \left \{ \begin{array}{l} 1 \hbox{ si } x &amp;gt; 0 \\ 0 \hbox{ sinon} \end{array} \right .
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;Then the ReLU class is easily coded.&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;copy&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;clip&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_x&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;We just simplified the multiplication between grad and an array of 0 and 1 by the where statement.&lt;/p&gt;
+&lt;p&gt;We won't need it for our example of neural net, but let's do the sigmoid to. It's defined by&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\sigma(x) = \frac{\mathrm{e}^{x}}{1 + \mathrm{e}^{x}}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;and by using the traditional rule to differentiate a quotient,&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+\sigma'(x) &amp;amp;= \frac{\mathrm{e}^{x}(1+\mathrm{e}^{x}) - \mathrm{e}^{x} \times \mathrm{e}^{x}}{(1+\mathrm{e}^{x})^{2}} = \frac{\mathrm{e}^{x}}{1+\mathrm{e}^{x}} - \frac{\mathrm{e}^{2x}}{(1+\mathrm{e}^{x})^{2}} \\
+&amp;amp;= \sigma(x) - \sigma(x)^{2} = \sigma(x) (1 - \sigma(x))
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;Then the sigmoid class is&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Sigmoid&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mf"&gt;1.&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mf"&gt;1.&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;grad&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Note that here we store the result of the forward pass and not the old value of x, because that's what we will need for the back propagation step.&lt;/p&gt;
+&lt;p&gt;The tanh class would be very similar to write.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="softmax"&gt;
+&lt;h2&gt;Softmax&lt;/h2&gt;
+&lt;p&gt;The softmax activation is a bit different since the results depends of all the inputs and it's not just applied to each element. If our input is &lt;span class="math"&gt;\(x_{1},\dots,x_{n}\)&lt;/span&gt; the
+output &lt;span class="math"&gt;\(y_{1},\dots,y_{n}\)&lt;/span&gt; is defined by&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\hbox{softmax}_{i}(x) = y_{i} = \frac{\mathrm{e}^{x_{i}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;When we want to take the derivative of &lt;span class="math"&gt;\(y_{i}\)&lt;/span&gt;, we have &lt;span class="math"&gt;\(n\)&lt;/span&gt; different variables with respect to which differentiate. We compute&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+\frac{\partial y_{i}}{\partial x_{i}} &amp;amp;= \frac{\mathrm{e}^{x_{i}}(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}) - \mathrm{e}^{x_{i}} \times \mathrm{e}^{x_{i}}}{(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}})^{2}} \\
+&amp;amp;= \frac{\mathrm{e}^{x_{i}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}} - \frac{\mathrm{e}^{2x_{i}}}{(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}})^{2}} \\
+&amp;amp;= y_{i} - y_{i}^{2} = y_{i}(1-y_{i})
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;and if &lt;span class="math"&gt;\(j \neq i\)&lt;/span&gt;&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+\frac{\partial y_{i}}{\partial x_{j}} &amp;amp;= - \frac{\mathrm{e}^{x_{i}}\mathrm{e}^{x_{j}}}{(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}})^{2}} \\
+&amp;amp;= \frac{\mathrm{e}^{x_{i}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}} \times \frac{\mathrm{e}^{x_{j}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}} \\
+&amp;amp;= -y_{i} y_{j}
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;Now we will get the derivatives of the loss with respect to the &lt;span class="math"&gt;\(y_{i}\)&lt;/span&gt; and we will have to compute the derivatives of the loss with respect to the &lt;span class="math"&gt;\(x_{j}\)&lt;/span&gt;. In this
+case, since each &lt;span class="math"&gt;\(y_{k}\)&lt;/span&gt; depends on the variable &lt;span class="math"&gt;\(x_{j}\)&lt;/span&gt;, the chain rule is written:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+\frac{\partial \hbox{loss}}{\partial x_{j}} &amp;amp;= \sum_{k=1}^{n} \frac{\partial \hbox{loss}}{\partial y_{k}} \times \frac{\partial y_{k}}{\partial x_{j}} \\
+&amp;amp;= \frac{\partial \hbox{loss}}{\partial y_{j}} (y_{j}-y_{j}^{2}) - \sum_{k \neq j}  y_{k}y_{j} \frac{\partial \hbox{loss}}{\partial y_{k}}\\
+&amp;amp;= y_{j} \frac{\partial \hbox{loss}}{\partial y_{j}} - \sum_{k=1}^{n}  y_{k}y_{j} \frac{\partial \hbox{loss}}{\partial y_{k}}
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;Now when we implement this, we have to remember that x is a  mini-batch of inputs. In the forward pass, the sum that we see in the denominator is to be taken on each line
+of the exponential of x which we can do with&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;This array will have a shape of (mb,), were mb is the size of our mini-batch. We want to divide np.exp(x) by this array, but since x has a shape (mb,n), we have to convert
+this array into an array of shape (mb,1), otherwise the two won't be broadcastable (numpy tries to add the ones at the beginning of the shape when two arrays don't have
+the same dimension). The trick is done with resize or expand_dims:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_dims&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Another way that's shorter is to add a None index:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)[:,&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;For the backward function, we can note that in our formula, &lt;span class="math"&gt;\(y_{j}\)&lt;/span&gt; can be factored, then the values we have to compute are the&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+y_{j} \left ( g_{j} - \sum_{k=1}^{n} y_{k} g_{k} \right )
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;where I noted g the gradient of the loss with respect to the &lt;span class="math"&gt;\(y_{j}\)&lt;/span&gt;. Again, the sum is to be taken on each line (and we have to add a dimension this time as well),
+which gives us:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Softmax&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+            &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;[:,&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+                &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+            &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)[:,&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div class="section" id="cross-entropy-cost"&gt;
+&lt;h2&gt;Cross Entropy cost&lt;/h2&gt;
+&lt;p&gt;The cost function is a little different in the sense it takes an output and a target, then returns a single real number. When we apply it to a mini-batch though, we have two arrays
+x and y of the same size (mb by n, the number of outputs) which represent a mini-batch of outputs of our network and the targets they should match, and it will return a vector
+of size mb.&lt;/p&gt;
+&lt;p&gt;The cross-entropy cost is the sum of the &lt;span class="math"&gt;\(-\ln(x_{i})\)&lt;/span&gt; over all the indexes &lt;span class="math"&gt;\(i\)&lt;/span&gt; for which &lt;span class="math"&gt;\(y_{i}\)&lt;/span&gt; equals 1. In practice though, just in case our network
+returns a value of &lt;span class="math"&gt;\(x_{i}\)&lt;/span&gt; to close to zero, we clip its value to a minimum of &lt;span class="math"&gt;\(10^{-8}\)&lt;/span&gt; (usually).&lt;/p&gt;
+&lt;p&gt;For the backward function, we don't have any old gradients to pass, since this is the first step of computing the derivatives of our loss. In the case of the cross-entropy loss,
+those are &lt;span class="math"&gt;\(-\frac{1}{x_{i}}\)&lt;/span&gt; for each &lt;span class="math"&gt;\(i\)&lt;/span&gt; for which &lt;span class="math"&gt;\(y_{i}\)&lt;/span&gt; equals 1, 0 otherwise. Thus we can code:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;CrossEntropy&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+            &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;clip&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;min&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mf"&gt;1e-8&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="nb"&gt;max&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+            &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;y&lt;/span&gt;
+                &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="o"&gt;==&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_x&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+            &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_y&lt;/span&gt;&lt;span class="o"&gt;==&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div class="section" id="linear-layer"&gt;
+&lt;h2&gt;Linear Layer&lt;/h2&gt;
+&lt;p&gt;We have done everything else, so now is the time to focus on a linear layer. Here we have a few parameters, the weights and the biases. If the layer we consider has &lt;span class="math"&gt;\(n_{in}\)&lt;/span&gt;
+inputs and &lt;span class="math"&gt;\(n_{out}\)&lt;/span&gt; outputs, the weights are stored in a matrix &lt;span class="math"&gt;\(W\)&lt;/span&gt; of size &lt;span class="math"&gt;\(n_{in},n_{out}\)&lt;/span&gt; and the bias is a vector &lt;span class="math"&gt;\(B\)&lt;/span&gt;. The output
+is given by &lt;span class="math"&gt;\(Y = XW + B\)&lt;/span&gt; (where &lt;span class="math"&gt;\(X\)&lt;/span&gt; is the input).&lt;/p&gt;
+&lt;p&gt;This formula can be seen for just one vector of inputs or a mini-batch, in the second case, we just have to think of :math`B` as a matrix with mb lines, all equal to the bias
+vector (which is the usual broadcasting in numpy).&lt;/p&gt;
+&lt;p&gt;The forward pass will be very easy to implement, for the backward pass, not only will we have to compute the gradients of the loss with regards to &lt;span class="math"&gt;\(X\)&lt;/span&gt; while given the gradients
+of the loss with regards to &lt;span class="math"&gt;\(Y\)&lt;/span&gt; (to be able to continue our back propagation) but we will also have to calculate and store the gradients of the loss with regards to all the
+weights and biases, since those are the things we will need to do a step in our gradient descent (and the whole reason we are doing this back propagation).&lt;/p&gt;
+&lt;p&gt;Let's begin with this. In terms of coordinates, the formula above can be rewritten&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+y_{i} = \sum_{k=1}^{n_{in}} x_{k} w_{k,i} + b_{i}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;So we have immediately&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial b_{i}} = \frac{\partial \hbox{loss}}{\partial y_{i}} \times \frac{\partial y_{i}}{\partial b_{i}} = \frac{\partial \hbox{loss}}{\partial y_{i}}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;and&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial w_{k,i}} = \frac{\partial \hbox{loss}}{\partial y_{i}} \times \frac{\partial y_{i}}{\partial w_{k,i}} = x_{k} \frac{\partial \hbox{loss}}{\partial y_{i}}.
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;There are no sums here because &lt;span class="math"&gt;\(b_{i}\)&lt;/span&gt; and &lt;span class="math"&gt;\(w_{k,i}\)&lt;/span&gt; only appear to define &lt;span class="math"&gt;\(y_{i}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;If we have the derivatives of the loss with respect to the &lt;span class="math"&gt;\(y_{i}\)&lt;/span&gt; in a variable called grad, the derivatives of the loss with respect to the biases are in grad, and the
+derivatives of the loss with respect to the weights are in the array&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;matmul&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_dim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_dims&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Why is that? Since x has a size &lt;span class="math"&gt;\((mb,n_{in})\)&lt;/span&gt; and grad has a size &lt;span class="math"&gt;\((mb,n_{out})\)&lt;/span&gt;, we transform those two arrays into tensors with dimensions
+&lt;span class="math"&gt;\((mb,n_{in}),1\)&lt;/span&gt; and &lt;span class="math"&gt;\((mb,1,n_{out})\)&lt;/span&gt;. That way, the traditional matrix product applied for the two last dimensions will give us, for each mini-batch, the product
+of &lt;span class="math"&gt;\(x_{k}\)&lt;/span&gt; by &lt;span class="math"&gt;\(\hbox{grad}_{j}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;As we explained in the &lt;a class="reference external" href="/what-is-deep-learning.html"&gt;introduction&lt;/a&gt; we average the gradients over the mini-batch to apply our step of the SGD, so we will store the mean
+over the first axis of those two arrays.&lt;/p&gt;
+&lt;p&gt;Then, once this is done, we still need to compute the derivatives of the loss with respect to the &lt;span class="math"&gt;\(x_{k}\)&lt;/span&gt;. This is given by the formula&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x_{k}} = \sum_{i=1}^{n_{out}} \frac{\partial \hbox{loss}}{\partial y_{i}} \times \frac{\partial y_{i}}{\partial x_{k}} = \sum_{i=1}^{n_{out}} \frac{\partial \hbox{loss}}{\partial y_{i}} w_{k,i}.
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;This can be rewritten as a simple matrix product:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\hbox{new grad} = (\hbox{old grad}) \times {}^{t}W.
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;We all of this, we can finally code our own linear class.&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;weights&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;randn&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;biases&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;randn&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;dot&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;weights&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;biases&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad_b&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad_w&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;matmul&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;old_x&lt;/span&gt;&lt;span class="p"&gt;[:,:,&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;[:,&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;,:]))&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;dot&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;weights&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;transpose&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Note that we initialize the weights randomly as we create the network. There's a slightly better rule for this, but we'll talk about it in another article.&lt;/p&gt;
+&lt;p&gt;We can now group all those layers in a model&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cost&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;layers&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;layers&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cost&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;cost&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;layer&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;layer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;loss&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cost&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;&lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;grad&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cost&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+            &lt;span class="n"&gt;grad&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;We can then create a model that looks like the one we defined for our digit classification like this:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;net&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;784&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;Relu&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt; &lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;Softmax&lt;/span&gt;&lt;span class="p"&gt;()],&lt;/span&gt; &lt;span class="n"&gt;CrossEntropy&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;The training loop would then look like something like this:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;train&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;lr&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;nb_epoch&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;epoch&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;nb_epoch&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;running_loss&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;0.&lt;/span&gt;
+        &lt;span class="n"&gt;num_inputs&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;mini_batch&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;inputs&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;targets&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;mini_batch&lt;/span&gt;
+            &lt;span class="n"&gt;num_inputs&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="n"&gt;inputs&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;shape&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+            &lt;span class="c1"&gt;#Forward pass + compute loss&lt;/span&gt;
+            &lt;span class="n"&gt;running_loss&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;loss&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inputs&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;targets&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+            &lt;span class="c1"&gt;#Back propagation&lt;/span&gt;
+            &lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+            &lt;span class="c1"&gt;#Update of the parameters&lt;/span&gt;
+            &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;layer&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+                &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nb"&gt;type&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;layer&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+                    &lt;span class="n"&gt;layer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;weights&lt;/span&gt; &lt;span class="o"&gt;-=&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;layer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad_w&lt;/span&gt;
+                    &lt;span class="n"&gt;layer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;biases&lt;/span&gt; &lt;span class="o"&gt;-=&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;layer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad_b&lt;/span&gt;
+        &lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="s1"&gt;'Epoch {epoch+1}/{nb_epoch}: loss = {running_loss/num_inputs}'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;To test it, we can use the data from the MNIST dataset loaded in &lt;a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/First%20neural%20net%20in%20pytorch.ipynb"&gt;this notebook&lt;/a&gt;, we just have to convert all the torch arrays obtained into numpy arrays,
+flatten the inputs, and for the targets, replace each label by a vector with zeros and a one (because that's what our loss function needs). Here's an example of how to do this:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;load_minibatches&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;64&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;tsfms&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;transforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Compose&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="n"&gt;transforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ToTensor&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt; &lt;span class="n"&gt;transforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Normalize&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="mf"&gt;0.1307&lt;/span&gt;&lt;span class="p"&gt;,),&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mf"&gt;0.3081&lt;/span&gt;&lt;span class="p"&gt;,))])&lt;/span&gt;
+    &lt;span class="n"&gt;trn_set&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;datasets&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;MNIST&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'.'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;train&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;download&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;transform&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;tsfms&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;trn_loader&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;utils&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;DataLoader&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;trn_set&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;shuffle&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;num_workers&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;data&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;mb&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;trn_loader&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;inputs_t&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;targets_t&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;mb&lt;/span&gt;
+        &lt;span class="n"&gt;inputs&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zeros&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;inputs_t&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;&lt;span class="mi"&gt;784&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="n"&gt;targets&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zeros&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;inputs_t&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;inputs_t&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)):&lt;/span&gt;
+            &lt;span class="n"&gt;targets&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;targets_t&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;]]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;1.&lt;/span&gt;
+            &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;j&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;28&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+                &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;k&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;28&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+                    &lt;span class="n"&gt;inputs&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;j&lt;/span&gt;&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="mi"&gt;28&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="n"&gt;k&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;inputs_t&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;j&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;k&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+        &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;inputs&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;targets&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;It's slower than the pytorch version but at least we can say we've fully got in the whole details of building a neural net from scratch.&lt;/p&gt;
+&lt;/div&gt;
+&lt;script type='text/javascript'&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="Neural net"></category><category term="Back propagation"></category></entry><entry><title>How Do You Find A Good Learning Rate</title><link href="/how-do-you-find-a-good-learning-rate.html" rel="alternate"></link><published>2018-03-20T16:15:00-04:00</published><updated>2018-03-20T16:15:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-03-20:/how-do-you-find-a-good-learning-rate.html</id><summary type="html">&lt;p class="first last"&gt;This is the main hyper-parameter to set when we train a neural net, but how do you determine the best value? Here's a technique to quickly decide on one.&lt;/p&gt;
 </summary><content type="html">&lt;div class="section" id="the-theory"&gt;
 &lt;h2&gt;The theory&lt;/h2&gt;
 &lt;p&gt;How do you decide on a learning rate? If it's too slow, your neural net is going to take forever to learn (try to use &lt;span class="math"&gt;\(10^{-5}\)&lt;/span&gt; instead of &lt;span class="math"&gt;\(10^{-2}\)&lt;/span&gt; in

@@ -1,0 +1,523 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
+
+    <link href="/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Another data science student's blog RSS">
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="Now that we have seen how to build a neural net in pytorch, let's try to take it a step further and try to do the same thing in numpy." />
+<meta name="keywords" content="Neural net, Back propagation">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="A simple neural net in numpy"/>
+<meta property="og:description" content="Now that we have seen how to build a neural net in pytorch, let's try to take it a step further and try to do the same thing in numpy."/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="/a-simple-neural-net-in-numpy.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-03-20 16:15:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="/author/sylvain-gugger.html">
+<meta property="article:section" content="Deep learning"/>
+<meta property="article:tag" content="Neural net"/>
+<meta property="article:tag" content="Back propagation"/>
+<meta property="og:image" content="/images/profile.png">
+
+  <title>Another data science student's blog &ndash; A simple neural net in numpy</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="https://sgugger.github.io">
+        <img src="/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="https://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/GuggerSylvain" target="_blank"><i class="fa fa-twitter"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="https://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
+
+      <a href="/feeds/all.rss.xml">    RSS
+</a>
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="a-simple-neural-net-in-numpy">A simple neural net in numpy</h1>
+    <p>
+          Posted on Tue 20 March 2018 in <a href="/category/deep-learning.html">Deep learning</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>Numpy doesn't have GPU-acceleration, so this is just to force us to understand what's going on behind the scenes, and how to code the things pytorch does automatically.
+The main thing we have to dig into is how it computes the gradient of the loss with respect to all the parameters of our neural net.</p>
+<div class="section" id="back-propagation">
+<h2>Back propagation</h2>
+<p>If we take the same example as in <a class="reference external" href="/a-neural-net-in-pytorch.html">this article</a> our neural network has two linear layers, the first activation function being a ReLU and
+the last one softmax (or log softmax) and the loss function the Cross Entropy.
+If we really wanted to, we could write down the (horrible) formula that gives the loss in terms of our inputs, the theoretical labels and
+all the parameters of the neural net, then compute the derivatives with respect to each weight and each bias, and finally, implement the corresponding formulas.</p>
+<p>Needless to say that would be painful (though what we'll do still is), and not very helpful in general since each time we change our network, we would have to redo the whole process. There is a smarter way
+to go that relies on the chain rule. Basically, our loss function is just a composition of simpler functions, let's say:</p>
+<div class="math">
+\begin{equation*}
+\hbox{loss} = f_{1} \circ f_{2} \circ f_{3} \circ \cdots \circ f_{p}(x)
+\end{equation*}
+</div>
+<p>where <span class="math">\(f_{1}\)</span> would be the Cross Entropy, <span class="math">\(f_{2}\)</span> our softmax activation, <span class="math">\(f_{3}\)</span> the last linear layer and so on... Furthermore, let's note</p>
+<div class="math">
+\begin{equation*}
+\left \{ \begin{array}{l} x_{1} = f_{p}(x) \\ x_{2} = f_{p-1}(f_{p}(x)) \\ \vdots \\ x_{p} = f_{1} \circ f_{2} \circ f_{3} \circ \cdots \circ f_{p}(x) \end{array} \right .
+\end{equation*}
+</div>
+<p>Then our loss is simply <span class="math">\(x_{p}\)</span>. We can compute (almost) easily the derivatives of all the <span class="math">\(f_{i}\)</span> (because they are the simple parts composing our loss function) so
+we will start from the very end and go backward until we reach <span class="math">\(x_{0} = x\)</span>. At the end, we have <span class="math">\(x_{p} = f_{p}(x_{p-1})\)</span> so</p>
+<div class="math">
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x_{p-1}} = \frac{\partial f_{p}}{\partial x_{p-1}}(x_{p-1})
+\end{equation*}
+</div>
+<p>Then <span class="math">\(x_{p-1} = f_{p-1}(x_{p-2})\)</span> so by the chain rule</p>
+<div class="math">
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x_{p-2}} = \frac{\partial \hbox{loss}}{\partial x_{p-1}} \times \frac{\partial f_{p-1}}{\partial x_{p-2}}(x_{p-2}) = \frac{\partial f_{p}}{\partial x_{p-1}} \times \frac{\partial f_{p-1}}{\partial x_{p-2}}(x_{p-2})
+\end{equation*}
+</div>
+<p>and so forth. In practice, this is just a tinier bit more complicated than this when the function <span class="math">\(f_{i}\)</span> depends on more than one variable, but we will study that in
+details when we need it (for the softmax and a linear layer).</p>
+<p>To code this in a flexible manner, and since I need some training in Oriented Object Programming in Python, we will define each tiny bit of our neural network as a class.
+Each one will have a forward method (that gives the result of an input going through that layer or activation function) and a backward method (that will compute the step
+in the back propagation of going from after this layer/activation to before). The forward method will get the output of the last part of the neural net to give its output.</p>
+<p>The backward method will get the derivatives of the loss function with respect to the next part of the layer and will have to compute the derivatives of the loss function
+with regards to the inputs it received. If that sounds unclear, reread this after the next paragraph and I hope it'll make more sense.</p>
+<p>It sounds complicated but it's not that difficult, just a bit of math to bear with. Our hard bits will be the linear layer and the softmax activation, so let's keep them for the end.</p>
+</div>
+<div class="section" id="activation-function">
+<h2>Activation function</h2>
+<p>If <span class="math">\(f\)</span> is an activation function, it receives the result of a layer <span class="math">\(x\)</span> and is applied element-wise to compute the output which is <span class="math">\(y = f(x)\)</span>. In
+practice, <span class="math">\(x\)</span> is a whole mini-batch of inputs, so it's an array with as many rows as the size of our mini-batch and as many columns as there were neurons in
+the previous layer. It's not really important since the function is applied element-wise, so we can safely imagine that <span class="math">\(x\)</span> is just one entry of the array.</p>
+<p>The forward pass is straightforward, and the back propagation step isn't really complicated either. If we know the derivative of our loss function with respect to <span class="math">\(y\)</span>, then</p>
+<div class="math">
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x} = \frac{\partial \hbox{loss}}{\partial y} \times \frac{\partial f}{\partial x} = \frac{\partial \hbox{loss}}{\partial y} \times f'(x).
+\end{equation*}
+</div>
+<p>where <span class="math">\(f'\)</span> is the derivative of the function <span class="math">\(f\)</span>. So if we receive a variable named <span class="math">\(\hbox{grad}\)</span> that contains all the derivatives of the loss with respect
+to all the <span class="math">\(y\)</span>, the derivatives of the loss with respect to all the <span class="math">\(x\)</span> is simply</p>
+<div class="math">
+\begin{equation*}
+f'(x) \odot \hbox{grad}
+\end{equation*}
+</div>
+<p>where <span class="math">\(f'\)</span> is applied element-wise and <span class="math">\(\odot\)</span> represents the product of the two arrays element-wise.
+Note that we will need to know <span class="math">\(x\)</span> when it's time for the back propagation step, so let's save it when we do the forward pass
+inside a parameter of our class.</p>
+<p>The easier to implement will be the ReLU activation function. Since we have</p>
+<div class="math">
+\begin{equation*}
+\hbox{ReLU}(x) = \max(0,x) = \left \{ \begin{array}{l} x \hbox{ si } x &gt; 0 \\ 0 \hbox{ sinon} \end{array} \right .
+\end{equation*}
+</div>
+<p>we can compute its derivative very easily:</p>
+<div class="math">
+\begin{equation*}
+\hbox{ReLU}'(x) = \left \{ \begin{array}{l} 1 \hbox{ si } x &gt; 0 \\ 0 \hbox{ sinon} \end{array} \right .
+\end{equation*}
+</div>
+<p>Then the ReLU class is easily coded.</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">ReLU</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">,</span><span class="n">grad</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+</pre>
+<p>We just simplified the multiplication between grad and an array of 0 and 1 by the where statement.</p>
+<p>We won't need it for our example of neural net, but let's do the sigmoid to. It's defined by</p>
+<div class="math">
+\begin{equation*}
+\sigma(x) = \frac{\mathrm{e}^{x}}{1 + \mathrm{e}^{x}}
+\end{equation*}
+</div>
+<p>and by using the traditional rule to differentiate a quotient,</p>
+<div class="math">
+\begin{align*}
+\sigma'(x) &amp;= \frac{\mathrm{e}^{x}(1+\mathrm{e}^{x}) - \mathrm{e}^{x} \times \mathrm{e}^{x}}{(1+\mathrm{e}^{x})^{2}} = \frac{\mathrm{e}^{x}}{1+\mathrm{e}^{x}} - \frac{\mathrm{e}^{2x}}{(1+\mathrm{e}^{x})^{2}} \\
+&amp;= \sigma(x) - \sigma(x)^{2} = \sigma(x) (1 - \sigma(x))
+\end{align*}
+</div>
+<p>Then the sigmoid class is</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">Sigmoid</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span>
+
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span><span class="p">)</span> <span class="o">*</span> <span class="n">grad</span>
+</pre>
+<p>Note that here we store the result of the forward pass and not the old value of x, because that's what we will need for the back propagation step.</p>
+<p>The tanh class would be very similar to write.</p>
+</div>
+<div class="section" id="softmax">
+<h2>Softmax</h2>
+<p>The softmax activation is a bit different since the results depends of all the inputs and it's not just applied to each element. If our input is <span class="math">\(x_{1},\dots,x_{n}\)</span> the
+output <span class="math">\(y_{1},\dots,y_{n}\)</span> is defined by</p>
+<div class="math">
+\begin{equation*}
+\hbox{softmax}_{i}(x) = y_{i} = \frac{\mathrm{e}^{x_{i}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}}
+\end{equation*}
+</div>
+<p>When we want to take the derivative of <span class="math">\(y_{i}\)</span>, we have <span class="math">\(n\)</span> different variables with respect to which differentiate. We compute</p>
+<div class="math">
+\begin{align*}
+\frac{\partial y_{i}}{\partial x_{i}} &amp;= \frac{\mathrm{e}^{x_{i}}(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}) - \mathrm{e}^{x_{i}} \times \mathrm{e}^{x_{i}}}{(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}})^{2}} \\
+&amp;= \frac{\mathrm{e}^{x_{i}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}} - \frac{\mathrm{e}^{2x_{i}}}{(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}})^{2}} \\
+&amp;= y_{i} - y_{i}^{2} = y_{i}(1-y_{i})
+\end{align*}
+</div>
+<p>and if <span class="math">\(j \neq i\)</span></p>
+<div class="math">
+\begin{align*}
+\frac{\partial y_{i}}{\partial x_{j}} &amp;= - \frac{\mathrm{e}^{x_{i}}\mathrm{e}^{x_{j}}}{(\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}})^{2}} \\
+&amp;= \frac{\mathrm{e}^{x_{i}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}} \times \frac{\mathrm{e}^{x_{j}}}{\mathrm{e}^{x_{1}} + \cdots + \mathrm{e}^{x_{n}}} \\
+&amp;= -y_{i} y_{j}
+\end{align*}
+</div>
+<p>Now we will get the derivatives of the loss with respect to the <span class="math">\(y_{i}\)</span> and we will have to compute the derivatives of the loss with respect to the <span class="math">\(x_{j}\)</span>. In this
+case, since each <span class="math">\(y_{k}\)</span> depends on the variable <span class="math">\(x_{j}\)</span>, the chain rule is written:</p>
+<div class="math">
+\begin{align*}
+\frac{\partial \hbox{loss}}{\partial x_{j}} &amp;= \sum_{k=1}^{n} \frac{\partial \hbox{loss}}{\partial y_{k}} \times \frac{\partial y_{k}}{\partial x_{j}} \\
+&amp;= \frac{\partial \hbox{loss}}{\partial y_{j}} (y_{j}-y_{j}^{2}) - \sum_{k \neq j}  y_{k}y_{j} \frac{\partial \hbox{loss}}{\partial y_{k}}\\
+&amp;= y_{j} \frac{\partial \hbox{loss}}{\partial y_{j}} - \sum_{k=1}^{n}  y_{k}y_{j} \frac{\partial \hbox{loss}}{\partial y_{k}}
+\end{align*}
+</div>
+<p>Now when we implement this, we have to remember that x is a  mini-batch of inputs. In the forward pass, the sum that we see in the denominator is to be taken on each line
+of the exponential of x which we can do with</p>
+<pre class="code python literal-block">
+<span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre>
+<p>This array will have a shape of (mb,), were mb is the size of our mini-batch. We want to divide np.exp(x) by this array, but since x has a shape (mb,n), we have to convert
+this array into an array of shape (mb,1), otherwise the two won't be broadcastable (numpy tries to add the ones at the beginning of the shape when two arrays don't have
+the same dimension). The trick is done with resize or expand_dims:</p>
+<pre class="code python literal-block">
+<span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre>
+<p>Another way that's shorter is to add a None index:</p>
+<pre class="code python literal-block">
+<span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span><span class="bp">None</span><span class="p">]</span>
+</pre>
+<p>For the backward function, we can note that in our formula, <span class="math">\(y_{j}\)</span> can be factored, then the values we have to compute are the</p>
+<div class="math">
+\begin{equation*}
+y_{j} \left ( g_{j} - \sum_{k=1}^{n} y_{k} g_{k} \right )
+\end{equation*}
+</div>
+<p>where I noted g the gradient of the loss with respect to the <span class="math">\(y_{j}\)</span>. Again, the sum is to be taken on each line (and we have to add a dimension this time as well),
+which gives us:</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">Softmax</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="p">[:,</span><span class="bp">None</span><span class="p">]</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span>
+
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">grad</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span> <span class="o">*</span> <span class="p">(</span><span class="n">grad</span> <span class="o">-</span><span class="p">(</span><span class="n">grad</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span><span class="bp">None</span><span class="p">])</span>
+</pre>
+</div>
+<div class="section" id="cross-entropy-cost">
+<h2>Cross Entropy cost</h2>
+<p>The cost function is a little different in the sense it takes an output and a target, then returns a single real number. When we apply it to a mini-batch though, we have two arrays
+x and y of the same size (mb by n, the number of outputs) which represent a mini-batch of outputs of our network and the targets they should match, and it will return a vector
+of size mb.</p>
+<p>The cross-entropy cost is the sum of the <span class="math">\(-\ln(x_{i})\)</span> over all the indexes <span class="math">\(i\)</span> for which <span class="math">\(y_{i}\)</span> equals 1. In practice though, just in case our network
+returns a value of <span class="math">\(x_{i}\)</span> to close to zero, we clip its value to a minimum of <span class="math">\(10^{-8}\)</span> (usually).</p>
+<p>For the backward function, we don't have any old gradients to pass, since this is the first step of computing the derivatives of our loss. In the case of the cross-entropy loss,
+those are <span class="math">\(-\frac{1}{x_{i}}\)</span> for each <span class="math">\(i\)</span> for which <span class="math">\(y_{i}\)</span> equals 1, 0 otherwise. Thus we can code:</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">CrossEntropy</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">old_x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span><span class="nb">max</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">old_y</span> <span class="o">=</span> <span class="n">y</span>
+                <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="p">),</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_y</span><span class="o">==</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</pre>
+</div>
+<div class="section" id="linear-layer">
+<h2>Linear Layer</h2>
+<p>We have done everything else, so now is the time to focus on a linear layer. Here we have a few parameters, the weights and the biases. If the layer we consider has <span class="math">\(n_{in}\)</span>
+inputs and <span class="math">\(n_{out}\)</span> outputs, the weights are stored in a matrix <span class="math">\(W\)</span> of size <span class="math">\(n_{in},n_{out}\)</span> and the bias is a vector <span class="math">\(B\)</span>. The output
+is given by <span class="math">\(Y = XW + B\)</span> (where <span class="math">\(X\)</span> is the input).</p>
+<p>This formula can be seen for just one vector of inputs or a mini-batch, in the second case, we just have to think of :math`B` as a matrix with mb lines, all equal to the bias
+vector (which is the usual broadcasting in numpy).</p>
+<p>The forward pass will be very easy to implement, for the backward pass, not only will we have to compute the gradients of the loss with regards to <span class="math">\(X\)</span> while given the gradients
+of the loss with regards to <span class="math">\(Y\)</span> (to be able to continue our back propagation) but we will also have to calculate and store the gradients of the loss with regards to all the
+weights and biases, since those are the things we will need to do a step in our gradient descent (and the whole reason we are doing this back propagation).</p>
+<p>Let's begin with this. In terms of coordinates, the formula above can be rewritten</p>
+<div class="math">
+\begin{equation*}
+y_{i} = \sum_{k=1}^{n_{in}} x_{k} w_{k,i} + b_{i}
+\end{equation*}
+</div>
+<p>So we have immediately</p>
+<div class="math">
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial b_{i}} = \frac{\partial \hbox{loss}}{\partial y_{i}} \times \frac{\partial y_{i}}{\partial b_{i}} = \frac{\partial \hbox{loss}}{\partial y_{i}}
+\end{equation*}
+</div>
+<p>and</p>
+<div class="math">
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial w_{k,i}} = \frac{\partial \hbox{loss}}{\partial y_{i}} \times \frac{\partial y_{i}}{\partial w_{k,i}} = x_{k} \frac{\partial \hbox{loss}}{\partial y_{i}}.
+\end{equation*}
+</div>
+<p>There are no sums here because <span class="math">\(b_{i}\)</span> and <span class="math">\(w_{k,i}\)</span> only appear to define <span class="math">\(y_{i}\)</span>.</p>
+<p>If we have the derivatives of the loss with respect to the <span class="math">\(y_{i}\)</span> in a variable called grad, the derivatives of the loss with respect to the biases are in grad, and the
+derivatives of the loss with respect to the weights are in the array</p>
+<pre class="code python literal-block">
+<span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">expand_dim</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+</pre>
+<p>Why is that? Since x has a size <span class="math">\((mb,n_{in})\)</span> and grad has a size <span class="math">\((mb,n_{out})\)</span>, we transform those two arrays into tensors with dimensions
+<span class="math">\((mb,n_{in}),1\)</span> and <span class="math">\((mb,1,n_{out})\)</span>. That way, the traditional matrix product applied for the two last dimensions will give us, for each mini-batch, the product
+of <span class="math">\(x_{k}\)</span> by <span class="math">\(\hbox{grad}_{j}\)</span>.</p>
+<p>As we explained in the <a class="reference external" href="/what-is-deep-learning.html">introduction</a> we average the gradients over the mini-batch to apply our step of the SGD, so we will store the mean
+over the first axis of those two arrays.</p>
+<p>Then, once this is done, we still need to compute the derivatives of the loss with respect to the <span class="math">\(x_{k}\)</span>. This is given by the formula</p>
+<div class="math">
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial x_{k}} = \sum_{i=1}^{n_{out}} \frac{\partial \hbox{loss}}{\partial y_{i}} \times \frac{\partial y_{i}}{\partial x_{k}} = \sum_{i=1}^{n_{out}} \frac{\partial \hbox{loss}}{\partial y_{i}} w_{k,i}.
+\end{equation*}
+</div>
+<p>This can be rewritten as a simple matrix product:</p>
+<div class="math">
+\begin{equation*}
+\hbox{new grad} = (\hbox{old grad}) \times {}^{t}W.
+\end{equation*}
+</div>
+<p>We all of this, we can finally code our own linear class.</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">Linear</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_out</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">biases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_out</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">biases</span>
+
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">grad</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad_b</span> <span class="o">=</span> <span class="n">grad</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad_w</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="p">[:,:,</span><span class="bp">None</span><span class="p">],</span><span class="n">grad</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,:]))</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">transpose</span><span class="p">())</span>
+</pre>
+<p>Note that we initialize the weights randomly as we create the network. There's a slightly better rule for this, but we'll talk about it in another article.</p>
+<p>We can now group all those layers in a model</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">Model</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layers</span><span class="p">,</span> <span class="n">cost</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="n">layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">grad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">grad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span>
+</pre>
+<p>We can then create a model that looks like the one we defined for our digit classification like this:</p>
+<pre class="code python literal-block">
+<span class="n">net</span> <span class="o">=</span> <span class="n">Model</span><span class="p">([</span><span class="n">Linear</span><span class="p">(</span><span class="mi">784</span><span class="p">,</span><span class="mi">100</span><span class="p">),</span> <span class="n">Relu</span><span class="p">(),</span> <span class="n">Linear</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="mi">10</span><span class="p">),</span> <span class="n">Softmax</span><span class="p">()],</span> <span class="n">CrossEntropy</span><span class="p">())</span>
+</pre>
+<p>The training loop would then look like something like this:</p>
+<pre class="code python literal-block">
+<span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span><span class="n">lr</span><span class="p">,</span><span class="n">nb_epoch</span><span class="p">,</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_epoch</span><span class="p">):</span>
+        <span class="n">running_loss</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">num_inputs</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">mini_batch</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">inputs</span><span class="p">,</span><span class="n">targets</span> <span class="o">=</span> <span class="n">mini_batch</span>
+            <span class="n">num_inputs</span> <span class="o">+=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1">#Forward pass + compute loss</span>
+            <span class="n">running_loss</span> <span class="o">+=</span> <span class="n">model</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span><span class="n">targets</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="c1">#Back propagation</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="c1">#Update of the parameters</span>
+            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="o">==</span> <span class="n">Linear</span><span class="p">:</span>
+                    <span class="n">layer</span><span class="o">.</span><span class="n">weights</span> <span class="o">-=</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">layer</span><span class="o">.</span><span class="n">grad_w</span>
+                    <span class="n">layer</span><span class="o">.</span><span class="n">biases</span> <span class="o">-=</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">layer</span><span class="o">.</span><span class="n">grad_b</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s1">'Epoch {epoch+1}/{nb_epoch}: loss = {running_loss/num_inputs}'</span><span class="p">)</span>
+</pre>
+<p>To test it, we can use the data from the MNIST dataset loaded in <a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/First%20neural%20net%20in%20pytorch.ipynb">this notebook</a>, we just have to convert all the torch arrays obtained into numpy arrays,
+flatten the inputs, and for the targets, replace each label by a vector with zeros and a one (because that's what our loss function needs). Here's an example of how to do this:</p>
+<pre class="code python literal-block">
+<span class="k">def</span> <span class="nf">load_minibatches</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">):</span>
+    <span class="n">tsfms</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">((</span><span class="mf">0.1307</span><span class="p">,),</span> <span class="p">(</span><span class="mf">0.3081</span><span class="p">,))])</span>
+    <span class="n">trn_set</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">MNIST</span><span class="p">(</span><span class="s1">'.'</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">tsfms</span><span class="p">)</span>
+    <span class="n">trn_loader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">trn_set</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">mb</span> <span class="ow">in</span> <span class="n">trn_loader</span><span class="p">:</span>
+        <span class="n">inputs_t</span><span class="p">,</span><span class="n">targets_t</span> <span class="o">=</span> <span class="n">mb</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">inputs_t</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="mi">784</span><span class="p">))</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">inputs_t</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="mi">10</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">inputs_t</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)):</span>
+            <span class="n">targets</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">targets_t</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="mf">1.</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">28</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">28</span><span class="p">):</span>
+                    <span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="o">*</span><span class="mi">28</span><span class="o">+</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputs_t</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">inputs</span><span class="p">,</span><span class="n">targets</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">data</span>
+</pre>
+<p>It's slower than the pytorch version but at least we can say we've fully got in the whole details of building a neural net from scratch.</p>
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="/tag/neural-net.html">Neural net</a>
+      <a href="/tag/back-propagation.html">Back propagation</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "",
+  "image": "/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>
