@@ -98,7 +98,8 @@
 
   <div>
     <p>Numpy doesn't have GPU-acceleration, so this is just to force us to understand what's going on behind the scenes, and how to code the things pytorch does automatically.
-The main thing we have to dig into is how it computes the gradient of the loss with respect to all the parameters of our neural net.</p>
+The main thing we have to dig into is how it computes the gradient of the loss with respect to all the parameters of our neural net. We'll see that despite the fact it seems
+a very hard thing to do, calculating the gradients involves roughly the same things (so takes approximately the same time) as computing the outputs of our network from the outputs.</p>
 <div class="section" id="back-propagation">
 <h2>Back propagation</h2>
 <p>If we take the same example as in <a class="reference external" href="/a-neural-net-in-pytorch.html">this article</a> our neural network has two linear layers, the first activation function being a ReLU and
@@ -138,7 +139,7 @@ Each one will have a forward method (that gives the result of an input going thr
 in the back propagation of going from after this layer/activation to before). The forward method will get the output of the last part of the neural net to give its output.</p>
 <p>The backward method will get the derivatives of the loss function with respect to the next part of the layer and will have to compute the derivatives of the loss function
 with regards to the inputs it received. If that sounds unclear, reread this after the next paragraph and I hope it'll make more sense.</p>
-<p>It sounds complicated but it's not that difficult, just a bit of math to bear with. Our hard bits will be the linear layer and the softmax activation, so let's keep them for the end.</p>
+<p>It seems complicated but it's not that difficult, just a bit of math to bear with. Our hard bits will be the linear layer and the softmax activation, so let's keep them for the end.</p>
 </div>
 <div class="section" id="activation-function">
 <h2>Activation function</h2>
@@ -302,7 +303,7 @@ those are <span class="math">\(-\frac{1}{x_{i}}\)</span> for each <span class="m
 <p>We have done everything else, so now is the time to focus on a linear layer. Here we have a few parameters, the weights and the biases. If the layer we consider has <span class="math">\(n_{in}\)</span>
 inputs and <span class="math">\(n_{out}\)</span> outputs, the weights are stored in a matrix <span class="math">\(W\)</span> of size <span class="math">\(n_{in},n_{out}\)</span> and the bias is a vector <span class="math">\(B\)</span>. The output
 is given by <span class="math">\(Y = XW + B\)</span> (where <span class="math">\(X\)</span> is the input).</p>
-<p>This formula can be seen for just one vector of inputs or a mini-batch, in the second case, we just have to think of :math`B` as a matrix with mb lines, all equal to the bias
+<p>This formula can be seen for just one vector of inputs or a mini-batch, in the second case, we just have to think of <span class="math">\(B\)</span> as a matrix with mb lines, all equal to the bias
 vector (which is the usual broadcasting in numpy).</p>
 <p>The forward pass will be very easy to implement, for the backward pass, not only will we have to compute the gradients of the loss with regards to <span class="math">\(X\)</span> while given the gradients
 of the loss with regards to <span class="math">\(Y\)</span> (to be able to continue our back propagation) but we will also have to calculate and store the gradients of the loss with regards to all the
@@ -329,10 +330,10 @@ y_{i} = \sum_{k=1}^{n_{in}} x_{k} w_{k,i} + b_{i}
 <p>If we have the derivatives of the loss with respect to the <span class="math">\(y_{i}\)</span> in a variable called grad, the derivatives of the loss with respect to the biases are in grad, and the
 derivatives of the loss with respect to the weights are in the array</p>
 <pre class="code python literal-block">
-<span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">expand_dim</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="p">[:,:,</span><span class="bp">None</span><span class="p">],</span><span class="n">grad</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,:])</span>
 </pre>
 <p>Why is that? Since x has a size <span class="math">\((mb,n_{in})\)</span> and grad has a size <span class="math">\((mb,n_{out})\)</span>, we transform those two arrays into tensors with dimensions
-<span class="math">\((mb,n_{in}),1\)</span> and <span class="math">\((mb,1,n_{out})\)</span>. That way, the traditional matrix product applied for the two last dimensions will give us, for each mini-batch, the product
+<span class="math">\((mb,n_{in},1)\)</span> and <span class="math">\((mb,1,n_{out})\)</span>. That way, the traditional matrix product applied for the two last dimensions will give us, for each mini-batch, the product
 of <span class="math">\(x_{k}\)</span> by <span class="math">\(\hbox{grad}_{j}\)</span>.</p>
 <p>As we explained in the <a class="reference external" href="/what-is-deep-learning.html">introduction</a> we average the gradients over the mini-batch to apply our step of the SGD, so we will store the mean
 over the first axis of those two arrays.</p>
@@ -352,8 +353,8 @@ over the first axis of those two arrays.</p>
 <pre class="code python literal-block">
 <span class="k">class</span> <span class="nc">Linear</span><span class="p">():</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_out</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_out</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">biases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_out</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">/</span><span class="n">n_in</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">biases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_out</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">old_x</span> <span class="o">=</span> <span class="n">x</span>
@@ -364,7 +365,7 @@ over the first axis of those two arrays.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">grad_w</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="p">[:,:,</span><span class="bp">None</span><span class="p">],</span><span class="n">grad</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,:]))</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">transpose</span><span class="p">())</span>
 </pre>
-<p>Note that we initialize the weights randomly as we create the network. There's a slightly better rule for this, but we'll talk about it in another article.</p>
+<p>Note that we initialize the weights randomly as we create the network. The rule usually used for this is explained <a class="reference external" href="https://arxiv-web3.library.cornell.edu/abs/1502.01852">here</a>, I may write another article detailing the reasoning behind it later. The biases are initialized to zero.</p>
 <p>We can now group all those layers in a model</p>
 <pre class="code python literal-block">
 <span class="k">class</span> <span class="nc">Model</span><span class="p">():</span>
