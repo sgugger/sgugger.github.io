@@ -1,5 +1,172 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Sylvain Gugger</title><link href="/" rel="alternate"></link><link href="/feeds/sylvain-gugger.atom.xml" rel="self"></link><id>/</id><updated>2018-03-20T16:15:00-04:00</updated><entry><title>A simple neural net in numpy</title><link href="/a-simple-neural-net-in-numpy.html" rel="alternate"></link><published>2018-03-20T16:15:00-04:00</published><updated>2018-03-20T16:15:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-03-20:/a-simple-neural-net-in-numpy.html</id><summary type="html">&lt;p class="first last"&gt;Now that we have seen how to build a neural net in pytorch, let's try to take it a step further and try to do the same thing in numpy.&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Sylvain Gugger</title><link href="/" rel="alternate"></link><link href="/feeds/sylvain-gugger.atom.xml" rel="self"></link><id>/</id><updated>2018-03-29T16:35:00-04:00</updated><entry><title>SGD Variants</title><link href="/sgd-variants.html" rel="alternate"></link><published>2018-03-29T16:35:00-04:00</published><updated>2018-03-29T16:35:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-03-29:/sgd-variants.html</id><summary type="html">&lt;p class="first last"&gt;Let's get a rapid overview and implementations of the common variants of SGD.&lt;/p&gt;
+</summary><content type="html">&lt;p&gt;To train our neural net we detailed the algorithm of Stochastic Gradient Descent in &lt;a class="reference external" href="/what-is-deep-learning.html"&gt;this article&lt;/a&gt; and implemented it in
+&lt;a class="reference external" href="/a-simple-neural-net-in-numpy.html"&gt;this one&lt;/a&gt;. To make it easier for our model to learn, there are a few ways we can improve it.&lt;/p&gt;
+&lt;div class="section" id="vanilla-sgd"&gt;
+&lt;h2&gt;Vanilla SGD&lt;/h2&gt;
+&lt;p&gt;Just to remember what we are talking about, the basic algorithm consists in changing each of our parameter this way&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+p_{t} = p_{t-1} - \hbox{lr} \times g_{t-1}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;where &lt;span class="math"&gt;\(p_{t}\)&lt;/span&gt; represents one of our parameters at a given step &lt;span class="math"&gt;\(t\)&lt;/span&gt; in our loop, &lt;span class="math"&gt;\(g_{t}\)&lt;/span&gt; the gradient of the loss with respect to &lt;span class="math"&gt;\(p_{t}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\hbox{lr}\)&lt;/span&gt;
+is an hyperparameter called learning rate. In a pytorch-like syntax, this can be coded:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;parameters&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div class="section" id="momentum"&gt;
+&lt;h2&gt;Momentum&lt;/h2&gt;
+&lt;p&gt;This amelioration is based on the observation that with SGD, we don't really manage to follow the line down a steep ravine, but rather bounce from one side to the other.&lt;/p&gt;
+&lt;img alt="Going up and down the ravine with SGD" class="align-center" src="../images/art3_momentum.png" style="width: 300px;" /&gt;
+&lt;p&gt;In this case, we would go faster by following the blue line. To do this, we will take some kind of average over the gradients, by updating our parameters like this:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+v_{t} &amp;amp;= \beta v_{t-1} + \hbox{lr} \times g_{t} \\
+p_{t} &amp;amp;= p_{t} - v_{t}
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;where &lt;span class="math"&gt;\(\beta\)&lt;/span&gt; is a new hyperparameter (often equals to 0.9). More details &lt;a class="reference external" href="https://www.sciencedirect.com/science/article/pii/S0893608098001166?via%3Dihub"&gt;here&lt;/a&gt;. In code, this would look like:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;parameters&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;beta&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;
+    &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;where we would store the values of the various variables v in a dictionary indexed by the parameters.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="nesterov"&gt;
+&lt;h2&gt;Nesterov&lt;/h2&gt;
+&lt;p&gt;Nesterov is an amelioration of momentum based on the observation that in the momentum variant, when the gradient start to really change direction (because we have passed our
+minimum for instance), it takes a really long time for the averaged values to realize it. In this variant, we first take the jump from &lt;span class="math"&gt;\(p_{t}\)&lt;/span&gt; to
+&lt;span class="math"&gt;\(p_{t} - \beta v_{t-1}\)&lt;/span&gt; then we compute the gradient. To be more precise, instead of using &lt;span class="math"&gt;\(g_{t} = \overrightarrow{\hbox{grad}} \hbox{ loss}(p_{t})\)&lt;/span&gt; we use&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+v_{t} &amp;amp;= \beta v_{t-1} + \hbox{lr} \times \overrightarrow{\hbox{grad}} \hbox{ loss}(p_{t} - \beta v_{t-1}) \\
+p_{t} &amp;amp;= p_{t} - v_{t}
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;This picture (coming from &lt;a class="reference external" href="http://cs231n.github.io/neural-networks-3/#sgd"&gt;this website&lt;/a&gt;) explains the difference with momentum&lt;/p&gt;
+&lt;img alt="Going up and down the ravine with SGD" class="align-center" src="../images/art3_nesterov.jpg" style="width: 600px;" /&gt;
+&lt;p&gt;In code, this needs to have a function that reevaluates the gradients after we do this first step.&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;parameters&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;p1&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;beta&lt;/span&gt; &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;reevaluate_grads&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;parameters&lt;/span&gt;
+    &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;beta&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;
+    &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div class="section" id="rms-prop"&gt;
+&lt;h2&gt;RMS Prop&lt;/h2&gt;
+&lt;p&gt;This is another variant of SGD that has been proposed by Geoffrey Hinton in &lt;a class="reference external" href="http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf"&gt;this course&lt;/a&gt; It suggests to divide each gradient by a moving average of its norm. More specifically, the update
+in this method looks like this:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+n_{t} &amp;amp;= \beta n_{t-1} + (1-\beta) g_{t}^{2} \\
+p_{t} &amp;amp;= p_{t} - \frac{\hbox{lr}}{\sqrt{n_{t}+\epsilon}} g_{t}
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;where &lt;span class="math"&gt;\(\beta\)&lt;/span&gt; is a new hyperparameter (usually 0.9) and &lt;span class="math"&gt;\(\epsilon\)&lt;/span&gt; a small value to avoid dividing by zero (usually &lt;span class="math"&gt;\(10^{-8}\)&lt;/span&gt;). It's easily coded:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;parameters&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;beta&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;beta&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt; &lt;span class="o"&gt;**&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;
+    &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sqrt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;epsilon&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div class="section" id="adam"&gt;
+&lt;h2&gt;Adam&lt;/h2&gt;
+&lt;p&gt;Adam is a mix between RMS Prop and momentum. Here is the &lt;a class="reference external" href="https://arxiv.org/abs/1412.6980"&gt;full article&lt;/a&gt; explaining it. The update in this method is:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{align*}
+m_{t} &amp;amp;= \beta_{1} m_{t-1} + (1-\beta_{1}) g_{t} \\
+n_{t} &amp;amp;= \beta_{2} n_{t-1} + (1-\beta_{2}) g_{t}^{2} \\
+\widehat{m_{t}} &amp;amp;= \frac{m_{t}}{1-\beta_{1}^{t}} \\
+\widehat{n_{t}} &amp;amp;= \frac{n_{t}}{1-\beta_{2}^{t}} \\
+p_{t} &amp;amp;= p_{t} - \frac{\hbox{lr}}{\sqrt{\widehat{n_{t}}+\epsilon}} \widehat{m_{t}}
+\end{align*}
+&lt;/div&gt;
+&lt;p&gt;where &lt;span class="math"&gt;\(\beta_{1}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\beta_{2}\)&lt;/span&gt; are two hyperparameters, the advised values being 0.9 and 0.999. We go from &lt;span class="math"&gt;\(m_{t}\)&lt;/span&gt; to &lt;span class="math"&gt;\(\widehat{m_{t}}\)&lt;/span&gt; to have smoother
+first values (as we explained it when we implemented the &lt;a class="reference external" href="/how-do-you-find-a-good-learning-rate.html"&gt;learning rate finder&lt;/a&gt;). It's same for &lt;span class="math"&gt;\(n_{t}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\widehat{n_{t}}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;We can code this quite easily:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;parameters&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;beta1&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;beta1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt;
+    &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;beta2&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;beta2&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;grad&lt;/span&gt; &lt;span class="o"&gt;**&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;
+    &lt;span class="n"&gt;m_hat&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;beta1&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="n"&gt;t&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;n_hat&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;beta2&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="n"&gt;t&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;m_hat&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sqrt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_hat&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;epsilon&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Both RMS Prop and Adam have the advantage of smoothing the gradients with this moving average of the norm. This way, we can pick a higher learning rate while
+avoiding the phenomenon where gradients were exploding.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="in-conclusion"&gt;
+&lt;h2&gt;In conclusion&lt;/h2&gt;
+&lt;p&gt;To get a sense on how these methods are all doing compared to the other, I've applied each of them on the
+&lt;a class="reference external" href="/a-neural-net-in-pytorch.html"&gt;digit classifier we built in pytorch&lt;/a&gt; and plotted the smoothed loss (
+as described when we implemented the &lt;a class="reference external" href="/how-do-you-find-a-good-learning-rate.html"&gt;learning rate finder&lt;/a&gt;) for each of them.&lt;/p&gt;
+&lt;img alt="Loss over iterations with all the SGD variants" class="align-center" src="../images/art3_variants.png" style="width: 600px;" /&gt;
+&lt;p&gt;This is the loss as we go through our mini-batches with the same initial model. Momentum and Nesterov end up finding
+the same loss as vanilla SGD, but it's probably because they needed more time to get to a better stop. What's interesting is that RMSProp and Adam tend to get the
+loss really low extremely fast, even if RMSProp had a little spike of error at the beginning.&lt;/p&gt;
+&lt;/div&gt;
+&lt;script type='text/javascript'&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="SGD"></category></entry><entry><title>A simple neural net in numpy</title><link href="/a-simple-neural-net-in-numpy.html" rel="alternate"></link><published>2018-03-20T16:15:00-04:00</published><updated>2018-03-20T16:15:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-03-20:/a-simple-neural-net-in-numpy.html</id><summary type="html">&lt;p class="first last"&gt;Now that we have seen how to build a neural net in pytorch, let's try to take it a step further and try to do the same thing in numpy.&lt;/p&gt;
 </summary><content type="html">&lt;p&gt;Numpy doesn't have GPU-acceleration, so this is just to force us to understand what's going on behind the scenes, and how to code the things pytorch does automatically.
 The main thing we have to dig into is how it computes the gradient of the loss with respect to all the parameters of our neural net. We'll see that despite the fact it seems
 a very hard thing to do, calculating the gradients involves roughly the same things (so takes approximately the same time) as computing the outputs of our network from the outputs.&lt;/p&gt;

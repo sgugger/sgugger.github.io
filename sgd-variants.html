@@ -1,0 +1,299 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
+
+    <link href="/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Another data science student's blog RSS">
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="Let's get a rapid overview and implementations of the common variants of SGD." />
+<meta name="keywords" content="SGD">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="SGD Variants"/>
+<meta property="og:description" content="Let's get a rapid overview and implementations of the common variants of SGD."/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="/sgd-variants.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-03-29 16:35:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="/author/sylvain-gugger.html">
+<meta property="article:section" content="Deep learning"/>
+<meta property="article:tag" content="SGD"/>
+<meta property="og:image" content="/images/profile.png">
+
+  <title>Another data science student's blog &ndash; SGD Variants</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="https://sgugger.github.io">
+        <img src="/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="https://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/GuggerSylvain" target="_blank"><i class="fa fa-twitter"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="https://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
+
+      <a href="/feeds/all.rss.xml">    RSS
+</a>
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="sgd-variants">SGD Variants</h1>
+    <p>
+          Posted on Thu 29 March 2018 in <a href="/category/deep-learning.html">Deep learning</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>To train our neural net we detailed the algorithm of Stochastic Gradient Descent in <a class="reference external" href="/what-is-deep-learning.html">this article</a> and implemented it in
+<a class="reference external" href="/a-simple-neural-net-in-numpy.html">this one</a>. To make it easier for our model to learn, there are a few ways we can improve it.</p>
+<div class="section" id="vanilla-sgd">
+<h2>Vanilla SGD</h2>
+<p>Just to remember what we are talking about, the basic algorithm consists in changing each of our parameter this way</p>
+<div class="math">
+\begin{equation*}
+p_{t} = p_{t-1} - \hbox{lr} \times g_{t-1}
+\end{equation*}
+</div>
+<p>where <span class="math">\(p_{t}\)</span> represents one of our parameters at a given step <span class="math">\(t\)</span> in our loop, <span class="math">\(g_{t}\)</span> the gradient of the loss with respect to <span class="math">\(p_{t}\)</span> and <span class="math">\(\hbox{lr}\)</span>
+is an hyperparameter called learning rate. In a pytorch-like syntax, this can be coded:</p>
+<pre class="code python literal-block">
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</pre>
+</div>
+<div class="section" id="momentum">
+<h2>Momentum</h2>
+<p>This amelioration is based on the observation that with SGD, we don't really manage to follow the line down a steep ravine, but rather bounce from one side to the other.</p>
+<img alt="Going up and down the ravine with SGD" class="align-center" src="../images/art3_momentum.png" style="width: 300px;" />
+<p>In this case, we would go faster by following the blue line. To do this, we will take some kind of average over the gradients, by updating our parameters like this:</p>
+<div class="math">
+\begin{align*}
+v_{t} &amp;= \beta v_{t-1} + \hbox{lr} \times g_{t} \\
+p_{t} &amp;= p_{t} - v_{t}
+\end{align*}
+</div>
+<p>where <span class="math">\(\beta\)</span> is a new hyperparameter (often equals to 0.9). More details <a class="reference external" href="https://www.sciencedirect.com/science/article/pii/S0893608098001166?via%3Dihub">here</a>. In code, this would look like:</p>
+<pre class="code python literal-block">
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+    <span class="n">v</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">+</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">v</span><span class="p">[</span><span class="n">p</span><span class="p">]</span>
+</pre>
+<p>where we would store the values of the various variables v in a dictionary indexed by the parameters.</p>
+</div>
+<div class="section" id="nesterov">
+<h2>Nesterov</h2>
+<p>Nesterov is an amelioration of momentum based on the observation that in the momentum variant, when the gradient start to really change direction (because we have passed our
+minimum for instance), it takes a really long time for the averaged values to realize it. In this variant, we first take the jump from <span class="math">\(p_{t}\)</span> to
+<span class="math">\(p_{t} - \beta v_{t-1}\)</span> then we compute the gradient. To be more precise, instead of using <span class="math">\(g_{t} = \overrightarrow{\hbox{grad}} \hbox{ loss}(p_{t})\)</span> we use</p>
+<div class="math">
+\begin{align*}
+v_{t} &amp;= \beta v_{t-1} + \hbox{lr} \times \overrightarrow{\hbox{grad}} \hbox{ loss}(p_{t} - \beta v_{t-1}) \\
+p_{t} &amp;= p_{t} - v_{t}
+\end{align*}
+</div>
+<p>This picture (coming from <a class="reference external" href="http://cs231n.github.io/neural-networks-3/#sgd">this website</a>) explains the difference with momentum</p>
+<img alt="Going up and down the ravine with SGD" class="align-center" src="../images/art3_nesterov.jpg" style="width: 600px;" />
+<p>In code, this needs to have a function that reevaluates the gradients after we do this first step.</p>
+<pre class="code python literal-block">
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">beta</span> <span class="n">v</span><span class="p">[</span><span class="n">p</span><span class="p">]</span>
+<span class="n">model</span><span class="o">.</span><span class="n">reevaluate_grads</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span>
+    <span class="n">v</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">+</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">v</span><span class="p">[</span><span class="n">p</span><span class="p">]</span>
+</pre>
+</div>
+<div class="section" id="rms-prop">
+<h2>RMS Prop</h2>
+<p>This is another variant of SGD that has been proposed by Geoffrey Hinton in <a class="reference external" href="http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf">this course</a> It suggests to divide each gradient by a moving average of its norm. More specifically, the update
+in this method looks like this:</p>
+<div class="math">
+\begin{align*}
+n_{t} &amp;= \beta n_{t-1} + (1-\beta) g_{t}^{2} \\
+p_{t} &amp;= p_{t} - \frac{\hbox{lr}}{\sqrt{n_{t}+\epsilon}} g_{t}
+\end{align*}
+</div>
+<p>where <span class="math">\(\beta\)</span> is a new hyperparameter (usually 0.9) and <span class="math">\(\epsilon\)</span> a small value to avoid dividing by zero (usually <span class="math">\(10^{-8}\)</span>). It's easily coded:</p>
+<pre class="code python literal-block">
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+    <span class="n">n</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">n</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">beta</span><span class="p">)</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span>
+</pre>
+</div>
+<div class="section" id="adam">
+<h2>Adam</h2>
+<p>Adam is a mix between RMS Prop and momentum. Here is the <a class="reference external" href="https://arxiv.org/abs/1412.6980">full article</a> explaining it. The update in this method is:</p>
+<div class="math">
+\begin{align*}
+m_{t} &amp;= \beta_{1} m_{t-1} + (1-\beta_{1}) g_{t} \\
+n_{t} &amp;= \beta_{2} n_{t-1} + (1-\beta_{2}) g_{t}^{2} \\
+\widehat{m_{t}} &amp;= \frac{m_{t}}{1-\beta_{1}^{t}} \\
+\widehat{n_{t}} &amp;= \frac{n_{t}}{1-\beta_{2}^{t}} \\
+p_{t} &amp;= p_{t} - \frac{\hbox{lr}}{\sqrt{\widehat{n_{t}}+\epsilon}} \widehat{m_{t}}
+\end{align*}
+</div>
+<p>where <span class="math">\(\beta_{1}\)</span> and <span class="math">\(\beta_{2}\)</span> are two hyperparameters, the advised values being 0.9 and 0.999. We go from <span class="math">\(m_{t}\)</span> to <span class="math">\(\widehat{m_{t}}\)</span> to have smoother
+first values (as we explained it when we implemented the <a class="reference external" href="/how-do-you-find-a-good-learning-rate.html">learning rate finder</a>). It's same for <span class="math">\(n_{t}\)</span> and <span class="math">\(\widehat{n_{t}}\)</span>.</p>
+<p>We can code this quite easily:</p>
+<pre class="code python literal-block">
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+    <span class="n">m</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta1</span> <span class="o">*</span> <span class="n">m</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">beta1</span><span class="p">)</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+    <span class="n">n</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta2</span> <span class="o">*</span> <span class="n">n</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">beta2</span><span class="p">)</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">m_hat</span> <span class="o">=</span> <span class="n">m</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">beta1</span><span class="o">**</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">n_hat</span> <span class="o">=</span> <span class="n">n</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">beta2</span><span class="o">**</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">m_hat</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n_hat</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span>
+</pre>
+<p>Both RMS Prop and Adam have the advantage of smoothing the gradients with this moving average of the norm. This way, we can pick a higher learning rate while
+avoiding the phenomenon where gradients were exploding.</p>
+</div>
+<div class="section" id="in-conclusion">
+<h2>In conclusion</h2>
+<p>To get a sense on how these methods are all doing compared to the other, I've applied each of them on the
+<a class="reference external" href="/a-neural-net-in-pytorch.html">digit classifier we built in pytorch</a> and plotted the smoothed loss (
+as described when we implemented the <a class="reference external" href="/how-do-you-find-a-good-learning-rate.html">learning rate finder</a>) for each of them.</p>
+<img alt="Loss over iterations with all the SGD variants" class="align-center" src="../images/art3_variants.png" style="width: 600px;" />
+<p>This is the loss as we go through our mini-batches with the same initial model. Momentum and Nesterov end up finding
+the same loss as vanilla SGD, but it's probably because they needed more time to get to a better stop. What's interesting is that RMSProp and Adam tend to get the
+loss really low extremely fast, even if RMSProp had a little spike of error at the beginning.</p>
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="/tag/sgd.html">SGD</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "",
+  "image": "/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>
