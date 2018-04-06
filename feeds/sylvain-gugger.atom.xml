@@ -108,9 +108,8 @@ avoiding the phenomenon where gradients were exploding.&lt;/p&gt;
 &lt;a class="reference external" href="/a-neural-net-in-pytorch.html"&gt;digit classifier we built in pytorch&lt;/a&gt; and plotted the smoothed loss (
 as described when we implemented the &lt;a class="reference external" href="/how-do-you-find-a-good-learning-rate.html"&gt;learning rate finder&lt;/a&gt;) for each of them.&lt;/p&gt;
 &lt;img alt="Loss over iterations with all the SGD variants" class="align-center" src="../images/art3_variants.png" style="width: 600px;" /&gt;
-&lt;p&gt;This is the loss as we go through our mini-batches with the same initial model. Momentum and Nesterov end up finding
-the same loss as vanilla SGD, but it's probably because they needed more time to get to a better stop. What's interesting is that RMSProp and Adam tend to get the
-loss really low extremely fast, even if RMSProp had a little spike of error at the beginning.&lt;/p&gt;
+&lt;p&gt;This is the loss as we go through our mini-batches with the same initial model. All variants are better than vanilla SGD, but it's probably because it needed more time to get to a
+better stop. What's interesting is that RMSProp and Adam tend to get the loss really low extremely fast.&lt;/p&gt;
 &lt;/div&gt;
 &lt;script type='text/javascript'&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
     var align = "center",
