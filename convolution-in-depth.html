@@ -1,0 +1,492 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
+
+    <link href="/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Another data science student's blog RSS">
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="CNNs (Convolutional Neural Network) are the most powerful networks used in computer vision. Let's see what a convolutional layer is all about, from the definition to the implementation in numpy, even with the back propagation." />
+<meta name="keywords" content="Deep Learning, Convolution">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="Convolution in depth"/>
+<meta property="og:description" content="CNNs (Convolutional Neural Network) are the most powerful networks used in computer vision. Let's see what a convolutional layer is all about, from the definition to the implementation in numpy, even with the back propagation."/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="/convolution-in-depth.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-04-05 11:03:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="/author/sylvain-gugger.html">
+<meta property="article:section" content="Basics"/>
+<meta property="article:tag" content="Deep Learning"/>
+<meta property="article:tag" content="Convolution"/>
+<meta property="og:image" content="/images/profile.png">
+
+  <title>Another data science student's blog &ndash; Convolution in depth</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="https://sgugger.github.io">
+        <img src="/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="https://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/GuggerSylvain" target="_blank"><i class="fa fa-twitter"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="https://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
+
+      <a href="/feeds/all.rss.xml">    RSS
+</a>
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="convolution-in-depth">Convolution in depth</h1>
+    <p>
+          Posted on Thu 05 April 2018 in <a href="/category/basics.html">Basics</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>Since AlexNet won the ImageNet competition in 2012, linear layers have been progressively replaced by convolutional ones in neural networks trained to perform a task related to
+image recognition. Let's see what those layers do and how to implement them from scratch.</p>
+<div class="section" id="what-is-convolution">
+<h2>What is convolution?</h2>
+<p>The idea behind convolution is the use of image kernels. A kernel is a small matrix (usually of size 3 by 3) used to apply effect to an image (like sharpening, blurring...). This
+is best shown on <a class="reference external" href="http://setosa.io/ev/image-kernels/">this super cool page</a> where you can actually see the direct effect on any image you like.</p>
+<p>The core idea is that an image is just a bunch of numbers. Its representation in a computer is an array of size width by heights pixels, and each pixel is associated to three float
+values ranging from 0 to 1 (or integers going from 0 to 255). This three numbers represent the red-ness, green-ness and blue-ness of said pixel, the combination of the three
+capturing its color. A fourth channel can be added to represent the transparency of the pixel but we won't focus on that.</p>
+<p>If the image is black and white, a single value can be use per pixel, with 0 meaning black and 1 (or 255) meaning white. Let's begin with this for the explanation. The convolution
+of our image by a given kernel of a given size is obtained by putting the kernel in front of every area of the picture, like a sliding window, to then do the element-wise product
+of the numbers in our kernel by the ones in the picture it overlaps and summing all of these, like in this picture:</p>
+<img alt="One convolution" class="align-center" src="../images/art4_one_conv.png" style="width: 600px;" />
+<p>Then we repeat the process by moving the kernel on every possible area of the picture.</p>
+<img alt="Full convolutional map" class="align-center" src="../images/art4_full_conv.png" style="width: 600px;" />
+<p>As shown on <a class="reference external" href="http://setosa.io/ev/image-kernels/">this page mentioned earlier</a>, by doing this on all the areas of our picture, sliding the kernel in all the possible positions, it will give another array of number that
+we can also interpret as a picture, and depending on the values inside of our kernel, this will apply different effects on the original image. The process is shown on <a class="reference external" href="https://youtu.be/Oqm9vsf_hvU">this video</a></p>
+<p>The idea behind a convolutional layer in a neural net is then to initialize the weights of kernels like the one we just saw at random, then use SGD to find the best possible
+parameters. It's possible to do this since the operation we are doing withour sliding window looks like</p>
+<div class="math">
+\begin{equation*}
+y = \sum w_{i,j} x_{i,j}
+\end{equation*}
+</div>
+<p>with the <span class="math">\(w_{i,j}\)</span> being the weights in our kernel and the <span class="math">\(x_{i,j}\)</span> being the values of our pixels. We can even decide to add a bias to have exactly the same
+transformation as a linear layer, the only difference being that the weights of a given kernel are the same and applied to the whole picture.</p>
+<p>By stacking several convolutional layers one on top of the other, the hope is to get a neural network that captures the information we want on our image.</p>
+</div>
+<div class="section" id="stride-and-padding">
+<h2>Stride and padding</h2>
+<p>Before we implement a convolutional layer in python, there is a few additional tweaks we can add. Padding consists in adding a few pixels on each (or a few) side of the picture
+with a zero value. By doing this, we can have an output that has exactly the same dimension is the output. For instance if we have an 7 by 7 image with a 3 by 3 kernel like in the
+picture before, you can put the sliding window on 5 (7 - 3 + 1) different position in width and height, so you get a 5 by 5 output. Adding a border of width one pixel all around
+the picture will change the original image into a 9 by 9 picture and make an output of size 7 by 7.</p>
+<p>A stride in convolution is just like a by in a for loop: instead of going through every window one after the other, we skip a given amount each time. Here is the result of
+a convolution with a padding of one and a stride of two:</p>
+<img alt="Full convolutional map with padding and stride" class="align-center" src="../images/art4_conv_stridepad.png" style="width: 600px;" />
+<p>In the end, if our picture as <span class="math">\(n_{1}\)</span> rows and <span class="math">\(n_{2}\)</span> columns, our kernel <span class="math">\(k_{1}\)</span> rows and <span class="math">\(k_{2}\)</span> columns, with a padding of <span class="math">\(p\)</span> and a stride of <span class="math">\(s\)</span>,
+the dimension of the new picture is</p>
+<div class="math">
+\begin{equation*}
+\left \lfloor \frac{n_{1} + 2*p - k_{1}}{s} \right \rfloor + 1 \quad \hbox{by} \quad \left \lfloor \frac{n_{2} + 2*p - k_{2}}{s} \right \rfloor + 1.
+\end{equation*}
+</div>
+<p>Why is that? Well for the width dimension, our picture has a size of <span class="math">\(n_{1} + 2*p\)</span> since we added <span class="math">\(p\)</span> pixels on each side. We begin in position 0 and the maximum index
+at the far right is <span class="math">\(n_{1} + 2*p-k_{1}\)</span>. Since we move by steps of length <span class="math">\(s\)</span>, the last position we reach is <span class="math">\(\hbox{nb} s\)</span> where <span class="math">\(\hbox{nb}\)</span> is the highest
+number satisfying</p>
+<div class="math">
+\begin{equation*}
+\hbox{nb} \leq n_{1} + 2*p - k_{1}
+\end{equation*}
+</div>
+<p>which gives us</p>
+<!-- math:
+\hbox{nb} = left \lfloor \frac{n_{1} + 2*p - k_{1}}{s} \right \rfloor. -->
+<p>Then from 0 to <span class="math">\(\hbox{nb}\)</span>, there is <span class="math">\(\hbox{nb}+1\)</span> integer, which is how we find the width of the output. It's the same reasoning for the height.</p>
+</div>
+<div class="section" id="more-channels">
+<h2>More channels</h2>
+<p>We gave the example of a black and white picture, but when we have an image with colors, there are three different channels. This means that our filter will need the same number
+of channels. In the previous example, instead of having just one 3 by 3 kernel, we'll have three. One for the red values of each pixel, one for the green values of each pixel and
+one of their blue values. So our filter is 3 channels by 3 by 3. We place the red part in front of the red channel of our picture, the green part in front of the green channel
+and the blue part in front of the blue channel, each time at exactly the same place like this.</p>
+<img alt="A convolution on three channels at once" class="align-center" src="../images/art4_conv_three_channels.png" style="width: 600px;" />
+<p>The results of those three intermediate convolutions <span class="math">\(y_{R}\)</span>, <span class="math">\(y_{G}\)</span> and <span class="math">\(y_{B}\)</span> are computed as before, and we sum them to get our final activation. It's get
+a bit more complicated because this is just one kernel. To make a full layer, we will consider several of them and use them all on all the possible places of our picture, with
+padding and stride if applicable.</p>
+<p>Before the layer we had a picture with 3 channels, width <span class="math">\(n_{1}\)</span> and height <span class="math">\(n_{2}\)</span>, after, we have another representation of that image with as many channels as we
+decided to take filters (let's say <span class="math">\(nb_{F}\)</span>), width <span class="math">\(nb_{1}\)</span> and height <span class="math">\(nb_{2}\)</span> (those two numbers being calculated with the formula above). If the initial
+channels represented the red-ness, green-ness, blue-ness of a pixel, the new ones will represent things like horizontal-ness or bluri-ness of a given area.</p>
+<p>When we stack this into a new convolutional layer (with kernels of size <span class="math">\(nb_{F}\)</span> by 3 by 3) it becomes harder to figure what the channels we obtain represent, but we
+don't necessarily need to understand their meaning. What's important is that the neural net will find a set of weights (via SGD) that helps it get the key informations it needs
+to eventually perform the task it was given (like identifying the digit in the picture, or classifying it between cat and dog).</p>
+</div>
+<div class="section" id="let-s-code-this">
+<h2>Let's code this!</h2>
+<p>Coding this in numpy is not the easiest thing so feel free to skip this part. It does provide good practice on vectorization and broadcasting though. We won't code the convolution
+as a loop since it would be very inefficient when with have to do it on a whole mini-batch. Instead, we will vectorize our picture so that the convolution operation just becomes
+a matrix product (which it is in essence, since it's a linear operation). This means taking each small window our kernel will look at and writing the number we see in a row.</p>
+<p>Taking back the 7 by 7 matrix before with a 3 by 3 kernel, it will change it like this (red window is written in red in our vector).</p>
+<img alt="Vectorizing a picture" class="align-center" src="../images/art4_vectorize.png" style="width: 500px;" />
+<p>If we note <span class="math">\(\hbox{vec}(x)\)</span> the vectorization of <span class="math">\(x\)</span>, and if we write our weights in a column <span class="math">\(W\)</span> (in the same order as with our windows), then the result of our
+convolution is just</p>
+<div class="math">
+\begin{equation*}
+\hbox{vec}(x) \times W
+\end{equation*}
+</div>
+<p>If we want to have the result of the convolution with all our filters at once, we just have to concatenate the corresponding columns into a matrix (that we will still note
+<span class="math">\(W\)</span>) and the same matrix product will give us all the results at the same time.</p>
+<p>That's for one channel, but what happens when we have more? We can just concatenate the vectorization for each channel in a very big <span class="math">\(\hbox{vec}(x)\)</span>, and put all the weights
+in the same order in a column of <span class="math">\(W\)</span>.</p>
+<img alt="Color channels concatenated" class="align-center" src="../images/art4_concat_vec.png" style="width: 400px;" />
+<p>Each row in this table represent a particular 3 by 3 window, which has 9 coordinates in each of the channels (red, green and blue), which is why they have 27 coordinates. There
+are 25 possibilities to align a window in front of our picture, which is why there 25 rows.</p>
+<p>The last thing we can do is define a bias for each of our kernel, and if we write them in a table named <span class="math">\(B\)</span>, the result of our convolution is</p>
+<div class="math">
+\begin{equation*}
+y_{1} = \hbox{vec}(x) \times W + B
+\end{equation*}
+</div>
+<p>where <span class="math">\(B\)</span> has as many columns as <span class="math">\(W\)</span> (<span class="math">\(nb_{F}\)</span>) and his coordinates are broadcasted over the row (e.g. repeated as many times as necessary to make <span class="math">\(B\)</span> the
+same size as the matrix before.</p>
+<p>Last part is to reshape the result <span class="math">\(y_{1}\)</span>. Let's go back to the input <span class="math">\(x\)</span>. In practice, we will get a whole mini-batch of them, which gives a new dimension (three
+was too easy already...). So the size of <span class="math">\(x\)</span> is <span class="math">\(m\)</span> (for mini-batch) by <span class="math">\(ch\)</span> (3 if we have the original picture) by <span class="math">\(n_{1}\)</span> by <span class="math">\(n_{2}\)</span>. When
+we vectorize it, <span class="math">\(\hbox{vec}(x)\)</span> has a size of <span class="math">\(m\)</span> by <span class="math">\(nb_{1} \times nb_{2}\)</span> (all the possibilities to put our filter in front of our image) by
+<span class="math">\(k_{1} \times k_{2} \times ch\)</span> (where the kernel is assumed of size <span class="math">\(k_{1}\)</span> by <span class="math">\(k_{2}\)</span>).</p>
+<p>Our matrix <span class="math">\(W\)</span> has <span class="math">\(nb_{F}\)</span> columns (the number of filters) and <span class="math">\(k_{1} \times k_{2} \times ch\)</span> rows, so the product will give us a result <span class="math">\(y_{1}\)</span>
+of size <span class="math">\(m\)</span> by <span class="math">\(nb_{1} \times nb_{2}\)</span> by <span class="math">\(nb_{F}\)</span> (assuming we <em>broadcast</em> the product over the first dimension, doing it for all mini-batch). The channels
+should be the second dimension if we want to be consistent with how we treated <span class="math">\(x\)</span> so we have to transpose the two last dimensions, and finally resize the result
+as <span class="math">\(y\)</span>, with a shape of <span class="math">\(m\)</span> by <span class="math">\(nb_{F}\)</span> by <span class="math">\(nb_{1}\)</span> by <span class="math">\(nb_{2}\)</span>.</p>
+<p>That sounds awfully complicated but as soon as we are done with the first part (vectorize the picture) the rest will be very easy.</p>
+</div>
+<div class="section" id="forward-pass">
+<h2>Forward pass</h2>
+<p>Let's assume first we already have that vectorization function that I'll call arr2vec. Since it's the hardest bit, let's keep it for the end. As we saw before, there's no point
+in our computation where we will need the weights other than in the form of the matrix <span class="math">\(W\)</span>, so that's how we will store and create them. As for a linear layer, the best
+way to initialize them is by following a normal distribution with a standard deviation of <span class="math">\(\sqrt{\frac{2}{ch}}\)</span> if <span class="math">\(ch\)</span> is the number of channels of the input.</p>
+<p>For the forward pass, we vectorize the mini-batch of inputs x, then we multiply the result by our weights and our bias. Then we have to invert the two last axis and reshape
+with the output size, which can be computed with the formulas above. All in all, this gives us:</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">Convolution</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nc_in</span><span class="p">,</span> <span class="n">nc_out</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span> <span class="o">=</span> <span class="n">kernel_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">nc_in</span> <span class="o">*</span> <span class="n">kernel_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">kernel_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">,</span><span class="n">nc_out</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">/</span><span class="n">nc_in</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">biases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nc_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stride</span> <span class="o">=</span> <span class="n">stride</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">padding</span> <span class="o">=</span> <span class="n">padding</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">mb</span><span class="p">,</span> <span class="n">ch</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">arr2vec</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">biases</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">y</span><span class="p">,(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">n1</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">)</span> <span class="o">//</span><span class="bp">self</span><span class="o">.</span><span class="n">stride</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding</span> <span class="p">)</span><span class="o">//</span><span class="bp">self</span><span class="o">.</span><span class="n">stride</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">y</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mb</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">biases</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">n1</span><span class="p">,</span><span class="n">p1</span><span class="p">)</span>
+</pre>
+<p>The arr2vec function remains. To write it, let's go back to the previous picture:</p>
+<img alt="Vectorizing a picture" class="align-center" src="../images/art4_vectorize.png" style="width: 500px;" />
+<p>The whole problem is to do this, once this is done, we'll just have to take the corresponding elements in our array x (instead of aligning 1,2,3, we'll need x[1],x[2],x[3]). We
+can note that each row in the vectorization can be deduced from the first by adding the same number everywhere. Let's forget about padding and stride to begin with and
+start with this first line.</p>
+<p>Since we're in Python, indexes begin at 0. Then we just want the numbers <span class="math">\(j+i*n_{2}\)</span> where <span class="math">\(j\)</span> goes from 0 to <span class="math">\(k_{1}\)</span>, <span class="math">\(i\)</span> goes from 0 to <span class="math">\(k_{2}\)</span> and
+<span class="math">\(n_{2}\)</span> is the number of columns. Those will form the grid of our kernel. Then we have to determine all the possible start indexes, which correspond to the points with
+coordinates <span class="math">\((i,j)\)</span> where <span class="math">\(i\)</span> can vary from 0 to <span class="math">\(n_{1} - k_{1}\)</span> and <span class="math">\(j\)</span> can vary from 0 to <span class="math">\(n_{2} - k_{2}\)</span>. For a given couple <span class="math">\((i,j)\)</span>,
+the index associated is <span class="math">\(j + i * n_{2}\)</span>. This gives us:</p>
+<pre class="code python literal-block">
+<span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">j</span> <span class="o">+</span> <span class="n">n2</span><span class="o">*</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k2</span><span class="p">)])</span>
+<span class="n">start_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">j</span> <span class="o">+</span> <span class="n">n2</span><span class="o">*</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n1</span><span class="o">-</span><span class="n">k1</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n2</span><span class="o">-</span><span class="n">k2</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="p">])</span>
+</pre>
+<p>Why the np.array? Well once we have done this, we basically want the array built by getting grid + any element in start_idx, which is very easy to do with broadcasting. Our
+vectorized array of indexes is:</p>
+<pre class="code python literal-block">
+<span class="n">grid</span><span class="p">[</span><span class="bp">None</span><span class="p">,:]</span> <span class="o">+</span> <span class="n">start_idx</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span>
+</pre>
+<p>Let's add a bit more complexity now. This is all we need for one channel, but we will actually get <span class="math">\(ch\)</span> of them. Our start indexes won't change since they are the same
+for all the channels, but our grid must include more element. Specifically, we need to duplicate the grid <span class="math">\(ch\)</span> times, adding <span class="math">\(n_{1} \times n_{2}\)</span> each time we do. This
+is done by</p>
+<pre class="code python literal-block">
+<span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">j</span> <span class="o">+</span> <span class="n">n2</span><span class="o">*</span><span class="n">i</span> <span class="o">+</span> <span class="n">n1</span> <span class="o">*</span> <span class="n">n2</span> <span class="o">*</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">ch</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k2</span><span class="p">)])</span>
+</pre>
+<p>Now for the stride and padding. Padding is adding 0 on the sides so we can begin by this.</p>
+<pre class="code python literal-block">
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">mb</span><span class="p">,</span><span class="n">ch</span><span class="p">,</span><span class="n">n1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">,</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">))</span>
+<span class="n">y</span><span class="p">[:,:,</span><span class="n">padding</span><span class="p">:</span><span class="n">n1</span><span class="o">+</span><span class="n">padding</span><span class="p">,</span><span class="n">padding</span><span class="p">:</span><span class="n">n2</span><span class="o">+</span><span class="n">padding</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+</pre>
+<p>This doesn't change our grid much, we will just have to adapt the sizes of our picture (now <span class="math">\(n_{1} + 2p\)</span> by <span class="math">\(n_{2} + 2p\)</span>). The start indexes will change slightly: the
+upper bound for the indexes <span class="math">\(i\)</span> and <span class="math">\(j\)</span> are now <span class="math">\(n_{1} +2p - k_{1}\)</span> and <span class="math">\(n_{2} + 2p - k_{2}\)</span>. Stride only adds one thing: we loop with a step.</p>
+<pre class="code python literal-block">
+<span class="n">start_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">j</span> <span class="o">+</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span><span class="o">*</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n1</span><span class="o">-</span><span class="n">k1</span><span class="o">+</span><span class="mi">1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">,</span><span class="n">stride</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n2</span><span class="o">-</span><span class="n">k2</span><span class="o">+</span><span class="mi">1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">,</span><span class="n">stride</span><span class="p">)</span> <span class="p">])</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">j</span> <span class="o">+</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span><span class="o">*</span><span class="n">i</span> <span class="o">+</span> <span class="p">(</span><span class="n">n1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">ch</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k2</span><span class="p">)])</span>
+<span class="n">to_take</span> <span class="o">=</span> <span class="n">start_idx</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">grid</span><span class="p">[</span><span class="bp">None</span><span class="p">,:]</span>
+</pre>
+<p>The last step is to do this for each mini-batch. Again, this will easily be done with a bit of broadcasting:</p>
+<pre class="code python literal-block">
+<span class="n">batch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">mb</span><span class="p">))</span> <span class="o">*</span> <span class="n">ch</span> <span class="o">*</span> <span class="p">(</span><span class="n">n1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span>
+<span class="n">batch</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">to_take</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,:]</span>
+</pre>
+<p>This final arrays has exactly the same shape as our desired output, and contains all the indexes we have to take in our array y. We just have to use the function numpy.take
+to select the corresponding elements in y.</p>
+<pre class="code python literal-block">
+<span class="k">def</span> <span class="nf">arr2vec</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">k1</span><span class="p">,</span><span class="n">k2</span> <span class="o">=</span> <span class="n">kernel_size</span>
+    <span class="n">mb</span><span class="p">,</span> <span class="n">ch</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">mb</span><span class="p">,</span><span class="n">ch</span><span class="p">,</span><span class="n">n1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">,</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">))</span>
+    <span class="n">y</span><span class="p">[:,:,</span><span class="n">padding</span><span class="p">:</span><span class="n">n1</span><span class="o">+</span><span class="n">padding</span><span class="p">,</span><span class="n">padding</span><span class="p">:</span><span class="n">n2</span><span class="o">+</span><span class="n">padding</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+    <span class="n">start_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">j</span> <span class="o">+</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span><span class="o">*</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n1</span><span class="o">-</span><span class="n">k1</span><span class="o">+</span><span class="mi">1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">,</span><span class="n">stride</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n2</span><span class="o">-</span><span class="n">k2</span><span class="o">+</span><span class="mi">1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">,</span><span class="n">stride</span><span class="p">)</span> <span class="p">])</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">j</span> <span class="o">+</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span><span class="o">*</span><span class="n">i</span> <span class="o">+</span> <span class="p">(</span><span class="n">n1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">ch</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k2</span><span class="p">)])</span>
+    <span class="n">to_take</span> <span class="o">=</span> <span class="n">start_idx</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">grid</span><span class="p">[</span><span class="bp">None</span><span class="p">,:]</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">mb</span><span class="p">))</span> <span class="o">*</span> <span class="n">ch</span> <span class="o">*</span> <span class="p">(</span><span class="n">n1</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">n2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">y</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">batch</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">to_take</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,:])</span>
+</pre>
+</div>
+<div class="section" id="back-propagation">
+<h2>Back propagation</h2>
+<p>If you've made it this far, there is just one last step to have completely understood a convolutional layer: we need to compute the gradients of the loss with respect to the
+weights, the biases and the inputs, being given the gradients of the loss with respect to the outputs.</p>
+<p>At heart, a convolutional layer is just a certain type of linear layer, so the formulas we had seen for the back-propagation through a linear layer will be useful here too. There is
+just a bit of reshaping, transposing, and... sadly... going back from a vector to an array. But let's keep this for last, since it'll be the worst.</p>
+<p>When we receive our gradient in a variable grads, they will have the same shape as our final output y, so <span class="math">\(m\)</span> by <span class="math">\(nb_{F}\)</span> by <span class="math">\(nb_{1}\)</span> by <span class="math">\(nb_{2}\)</span>. To go
+back to <span class="math">\(y_{1}\)</span>, we have to reshape our gradients as <span class="math">\(m\)</span> by <span class="math">\(nb_{F}\)</span> by <span class="math">\(nb_{1} \times nb_{2}\)</span> then invert the two alst coordinates. This will give us
+grad1.</p>
+<p>The operation we did at this stage is</p>
+<div class="math">
+\begin{equation*}
+y_{1} = \hbox{vec}(x) \times W + B
+\end{equation*}
+</div>
+<p>so we already know the gradients of the loss with respect to <span class="math">\(\hbox{vec}(x)\)</span> is <span class="math">\({}^{t} W \hbox{grad}_{1}\)</span> (like <a class="reference external" href="/a-simple-neural-net-in-numpy.html">in this article</a>)
+Following the same lead, the gradients of the loss with respect to the biases should be in grad1, but this time this array has one dimension too many. That's because each bias
+is used for all the activations (whereas before they were only used once). We will have to sum the gradients over all the activations they appear (that's the second dimension of
+grad1), then take the mean over the mini-batch (which is the first dimension).</p>
+<p>Why the sum? It comes from the chain rule. Since a given bias <span class="math">\(b\)</span> is used to compute <span class="math">\(z_{1},\dots,z_{N}\)</span> (where <span class="math">\(N = nb_{1} \times nb_{2}\)</span>) we have</p>
+<div class="math">
+\begin{equation*}
+\frac{\partial \hbox{loss}}{\partial b} = \sum_{i=1}^{n} \frac{\partial \hbox{loss}}{\partial z_{i}} \times \frac{\partial z_{i}}{\partial b} = \sum_{i=1}^{n} \frac{\partial \hbox{loss}}{\partial z_{i}}
+\end{equation*}
+</div>
+<p>It'll be the same for the weights: for a given weight <span class="math">\(w_{i,j}\)</span>, we have to compute all the vec(x)[:,:,i] * grad1[:,:,j] then take the sum over the second axis, and take the
+mean over the first axis.</p>
+<p>Then, we have to reshape the gradient of the loss with respect to <span class="math">\(\hbox{vec}(x)\)</span> with the initial shape of x, which will need another function called vec2arr that we will
+code last. With all of this, we can write the full Convolution class:</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">Convolution</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nc_in</span><span class="p">,</span> <span class="n">nc_out</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span> <span class="o">=</span> <span class="n">kernel_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">nc_in</span> <span class="o">*</span> <span class="n">kernel_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">kernel_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">,</span><span class="n">nc_out</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">/</span><span class="n">nc_in</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">biases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nc_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stride</span> <span class="o">=</span> <span class="n">stride</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">padding</span> <span class="o">=</span> <span class="n">padding</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">mb</span><span class="p">,</span> <span class="n">ch</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_size</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_x</span> <span class="o">=</span> <span class="n">arr2vec</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">biases</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">y</span><span class="p">,(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">n1</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">)</span> <span class="o">//</span><span class="bp">self</span><span class="o">.</span><span class="n">stride</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding</span> <span class="p">)</span><span class="o">//</span><span class="bp">self</span><span class="o">.</span><span class="n">stride</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">y</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mb</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">biases</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">n1</span><span class="p">,</span><span class="n">p1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">grad</span><span class="p">):</span>
+        <span class="n">mb</span><span class="p">,</span> <span class="n">ch_out</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">grad</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">grad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">grad</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mb</span><span class="p">,</span><span class="n">ch_out</span><span class="p">,</span><span class="n">n1</span><span class="o">*</span><span class="n">p1</span><span class="p">),(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad_b</span> <span class="o">=</span> <span class="n">grad</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad_w</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_x</span><span class="p">[:,:,:,</span><span class="bp">None</span><span class="p">],</span><span class="n">grad</span><span class="p">[:,:,</span><span class="bp">None</span><span class="p">,:]))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">new_grad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">transpose</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">vec2arr</span><span class="p">(</span><span class="n">new_grad</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">)</span>
+</pre>
+<p>The last function takes a vectorized input and has to compute an array associated to it by <em>reversing</em> what arr2vec is doing. It's not just repositioning elements: in the
+earlier example, 3 was present three times. The elements on those positions must be summed (the chain rule again) and the result placed in the position where 3 was in the initial
+array.</p>
+<p>So that's what we have to do: for each element on our initial array, we have to locate all the spots the arr2vec function put them in, sum the elements we get, and put that in
+our result array. To use vectorization, we will create a big array of numbers, with as many row as as in our input, so <span class="math">\(N = m \times ch \times n_{1} \times n_{2}\)</span> and as
+many columns as necessary. On each row, we will have the positions of where the arr2vec function would have placed that element, so we will just have to take the sum over the
+second axis and reshape at the end.</p>
+<p>First, let's check how many windows could have passed over the element with coordinates <span class="math">\((i,j)\)</span>. That's all the windows that started at <span class="math">\((i-k1i,j-k2j)\)</span> where <span class="math">\(k1i\)</span>
+can go from 0 to <span class="math">\(k_{1}-1\)</span> and <span class="math">\(k2j\)</span> can go from 0 to <span class="math">\(k_{2}-1\)</span>. Of course, this will sometimes give us negatives coordinates, or coordinates of window that
+go to far on the right or the bottom of the picture. We'll deal with those with a mask, but first, let's compute them all.</p>
+<pre class="code python literal-block">
+<span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="n">i</span><span class="o">-</span><span class="n">k1i</span><span class="p">,</span> <span class="n">j</span><span class="o">-</span><span class="n">k2j</span><span class="p">]</span> <span class="k">for</span> <span class="n">k1i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="p">)</span> <span class="k">for</span> <span class="n">k2j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k2</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">p</span><span class="p">)])</span>
+<span class="n">in_bounds</span> <span class="o">=</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="o">-</span><span class="n">k1</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span>
+<span class="n">in_bound</span> <span class="o">*=</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">p</span><span class="o">-</span><span class="n">k2</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span>
+</pre>
+<p>The second array is a boolean array that checks that the corners of our windows are inside the picture, taking the padding into account. Another mask we will need is to take
+the stride into account: some of those windows aren't considered if we have a stride different from one.</p>
+<pre class="code python literal-block">
+<span class="n">in_strides</span> <span class="o">=</span> <span class="p">((</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span><span class="o">%</span><span class="n">stride</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span><span class="o">%</span><span class="n">stride</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span>
+</pre>
+<p>Now we can just convert the couples into indexes and our channel dimension at the bottom.</p>
+<pre class="code python literal-block">
+<span class="n">to_take</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">k2</span> <span class="o">+</span> <span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k1</span><span class="o">*</span><span class="n">k2</span><span class="o">*</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ch</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre>
+<p>At this stage, we read on a line (when it's in bound and in-stride) the indexes of the elements to pick in each column. For this to correspond to the indexes of the element in the
+array, we have to add to each column a multiple of the number of columns in our input (which I called ftrs).</p>
+<pre class="code python literal-block">
+<span class="n">to_take</span> <span class="o">=</span> <span class="n">to_take</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ftrs</span> <span class="o">*</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="o">*</span><span class="n">k2</span><span class="p">)])</span>
+<span class="n">to_take</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">to_take</span> <span class="o">+</span> <span class="n">md</span><span class="o">*</span><span class="n">ftrs</span><span class="o">*</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mb</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre>
+<p>Then we add all the mini-batches over the same dimension. Last thing we have to do is to expand our mask to make it the same size.</p>
+<pre class="code python literal-block">
+<span class="n">in_bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">in_bounds</span> <span class="o">*</span> <span class="n">in_strides</span><span class="p">,(</span><span class="n">ch</span> <span class="o">*</span> <span class="n">mb</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+</pre>
+<p>and we're ready to take our inputs and sum them!</p>
+<pre class="code python literal-block">
+<span class="k">def</span> <span class="nf">vec2arr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">old_shape</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">k1</span><span class="p">,</span><span class="n">k2</span> <span class="o">=</span> <span class="n">kernel_size</span>
+    <span class="n">n</span><span class="p">,</span><span class="n">p</span> <span class="o">=</span> <span class="n">old_shape</span>
+    <span class="n">mb</span><span class="p">,</span> <span class="n">md</span><span class="p">,</span> <span class="n">ftrs</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">ch</span> <span class="o">=</span> <span class="n">ftrs</span> <span class="o">//</span> <span class="p">(</span><span class="n">k1</span><span class="o">*</span><span class="n">k2</span><span class="p">)</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="n">i</span><span class="o">-</span><span class="n">k1i</span><span class="p">,</span> <span class="n">j</span><span class="o">-</span><span class="n">k2j</span><span class="p">]</span> <span class="k">for</span> <span class="n">k1i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="p">)</span> <span class="k">for</span> <span class="n">k2j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k2</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">p</span><span class="p">)])</span>
+    <span class="n">in_bounds</span> <span class="o">=</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="o">-</span><span class="n">k1</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span>
+    <span class="n">in_bounds</span> <span class="o">*=</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">padding</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">p</span><span class="o">-</span><span class="n">k2</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span>
+    <span class="n">in_strides</span> <span class="o">=</span> <span class="p">((</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span><span class="o">%</span><span class="n">stride</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">padding</span><span class="p">)</span><span class="o">%</span><span class="n">stride</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">to_take</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">idx</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">k2</span> <span class="o">+</span> <span class="n">idx</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k1</span><span class="o">*</span><span class="n">k2</span><span class="o">*</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ch</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">to_take</span> <span class="o">=</span> <span class="n">to_take</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ftrs</span> <span class="o">*</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k1</span><span class="o">*</span><span class="n">k2</span><span class="p">)])</span>
+    <span class="n">to_take</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">to_take</span> <span class="o">+</span> <span class="n">md</span><span class="o">*</span><span class="n">ftrs</span><span class="o">*</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mb</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">in_bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">in_bounds</span> <span class="o">*</span> <span class="n">in_strides</span><span class="p">,(</span><span class="n">ch</span> <span class="o">*</span> <span class="n">mb</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">in_bounds</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">to_take</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mb</span><span class="p">,</span><span class="n">ch</span><span class="p">,</span><span class="n">n</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+</pre>
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="/tag/deep-learning.html">Deep Learning</a>
+      <a href="/tag/convolution.html">Convolution</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "",
+  "image": "/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>
