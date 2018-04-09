@@ -1,5 +1,125 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog</title><link href="/" rel="alternate"></link><link href="/feeds/all-en.atom.xml" rel="self"></link><id>/</id><updated>2018-04-05T11:03:00-04:00</updated><entry><title>Convolution in depth</title><link href="/convolution-in-depth.html" rel="alternate"></link><published>2018-04-05T11:03:00-04:00</published><updated>2018-04-05T11:03:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-05:/convolution-in-depth.html</id><summary type="html">&lt;p class="first last"&gt;CNNs (Convolutional Neural Network) are the most powerful networks used in computer vision. Let's see what a convolutional layer is all about, from the definition to the implementation in numpy, even with the back propagation.&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog</title><link href="/" rel="alternate"></link><link href="/feeds/all-en.atom.xml" rel="self"></link><id>/</id><updated>2018-04-07T15:23:00-04:00</updated><entry><title>The 1cycle policy</title><link href="/the-1cycle-policy.html" rel="alternate"></link><published>2018-04-07T15:23:00-04:00</published><updated>2018-04-07T15:23:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-07:/the-1cycle-policy.html</id><summary type="html">&lt;p class="first last"&gt;Properly setting the hyper-parameters of a neural network can be challenging, fortunately, there are some recipe that can help.&lt;/p&gt;
+</summary><content type="html">&lt;p&gt;Here, we will dig into the &lt;a class="reference external" href="https://arxiv.org/abs/1803.09820"&gt;first part&lt;/a&gt; of Leslie Smith's work about setting hyper-parameters (namely learning rate, momentum and weight decay). In particular, his 1cycle policy
+gives very fast results to train complex models. As an example, we'll see how it allows us to train a resnet-56 on cifar10 to a better precision than the authors in
+&lt;a class="reference external" href="https://arxiv.org/abs/1512.03385"&gt;their original paper&lt;/a&gt; but with far less iterations.&lt;/p&gt;
+&lt;p&gt;&lt;a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/Cyclical%20LR%20and%20momentums.ipynb"&gt;This notebook&lt;/a&gt; contains all the experiments.
+They are done with the same data-augmentation as in this original paper with one minor tweak: we random flip the picture horizontally and a random crop after adding a padding of
+4 pixels on each side. The minor tweak is that we don't color the padded pixels in black, but use a reflection padding, since it's the one implemented
+in the fastai library. This is probably why we get slightly better results than Leslie when doing the experiments with the same hyper-parameters.&lt;/p&gt;
+&lt;div class="section" id="using-high-learning-rates"&gt;
+&lt;h2&gt;Using high learning rates&lt;/h2&gt;
+&lt;p&gt;We have already seen how to implement the &lt;a class="reference external" href="/how-do-you-find-a-good-learning-rate.html"&gt;learning rate finder&lt;/a&gt;. Begin to train the model while increasing the learning rate from
+a very low to a very large one, stop when the loss starts to really get out of control. Plot the losses against the learning rates and pick a value a bit before the minimum,
+where the loss still improves. Here for instance, anything between &lt;span class="math"&gt;\(10^{-2}\)&lt;/span&gt; and &lt;span class="math"&gt;\(3 \times 10^{-2}\)&lt;/span&gt; seems like a good idea.&lt;/p&gt;
+&lt;img alt="An example of curve when finder the learning rate" class="align-center" src="../images/art2_courbe_lr.png" style="width: 400px;" /&gt;
+&lt;p&gt;This was already an idea of the same author and he completes it in his &lt;a class="reference external" href="https://arxiv.org/abs/1803.09820"&gt;last article&lt;/a&gt; with a good approach to adopt during training.&lt;/p&gt;
+&lt;p&gt;He recommends to do a cycle with two steps of equal lengths, one going from a lower learning rate to a higher one than go back to the minimum. The maximum should be the value picked
+with the Learning Rate Finder, and the lower one can be ten times lower. Then, the length of this cycle should be slightly less than the total number of epochs, and, in the last
+part of training, we should allow the learning rate to decrease more than the minimum, by several orders of magnitude.&lt;/p&gt;
+&lt;img alt="Learning rates to use in a cycle" class="align-center" src="../images/art5_lr_schedule.png" style="width: 400px;" /&gt;
+&lt;p&gt;The idea of starting slower isn't new: using a lower value to warm-up the training is often done, and this is exactly what the first part is achieving. Leslie doesn't recommend
+to switch to a higher value directly, however, but to rather slowly go there linearly, and to take as much time going up as going down.&lt;/p&gt;
+&lt;p&gt;What he observed during his experiments is that the during the middle of the cycle, the high learning rates will act as regularization method, and keep the network from overfitting.
+They will prevent the model to land in a steep area of the loss function, preferring to find a minimum that is flatter. He explained in &lt;a class="reference external" href="https://arxiv.org/abs/1708.07120"&gt;this other paper&lt;/a&gt; how he observed that by using this policy, approximates of the hessian were lower, indicating that the SGD was finding a wider flat area.&lt;/p&gt;
+&lt;p&gt;Then the last part of the training, with descending learning rates up until annihilation will allow us to go inside a steeper local minimum inside that smoother part.&lt;/p&gt;
+&lt;img alt="Losses during a full cycle" class="align-center" src="../images/art5_losses.png" style="width: 400px;" /&gt;
+&lt;p&gt;In this graph, the learning rate was rising from 0.08 to 0.8 between epochs 0 and 41, getting back to 0.08 between epochs 41 and 82 then going to one hundredth of 0.08 in the last
+few epochs. We can see how the validation loss gets a little bit more volatile during the high learning rate part of the cycle (epochs 20 to 60 mostly) but the important part is
+that on average, the distance between the training loss and the validation loss doesn't increase. We only really start to overfit at the end of the cycle, when the learning rate
+gets annihilated.&lt;/p&gt;
+&lt;p&gt;Surprisingly, applying this policy even allows us to pick larger maximum learning rates, closer to the minimum of the plot we draw when using the learning rate finder. Those
+trainings are a bit more dangerous in the sense that the loss can go too far away and make the whole thing diverge. In those cases, it can be worth to try with a longer cycle before going
+to a slower learning rate, since a long warm-up seems to help.&lt;/p&gt;
+&lt;img alt="Losses during a full cycle" class="align-center" src="../images/art5_superconvergence.png" style="width: 400px;" /&gt;
+&lt;p&gt;In this graph, the learning rate was rising from 0.15 to 3 between epochs 0 and 22.5, getting back to 0.15 between epochs 22.5 and 45 then going to one hundredth of 0.15 in the last
+few epochs. With very high learning rates, we get to learn faster &lt;strong&gt;and&lt;/strong&gt; prevent overfitting. The difference between the validation loss and the training loss stays extremely low
+up until we annihilate the learning rates. This is the phenomenon Leslie Smith describes as super convergence.&lt;/p&gt;
+&lt;p&gt;By opposition, a smaller cycle followed by a longer annihilation will result in something like this:&lt;/p&gt;
+&lt;img alt="An example of overfitting" class="align-center" src="../images/art5_overfitting.png" style="width: 400px;" /&gt;
+&lt;p&gt;Here our two steps end at epoch 42 and the rest of the training is spent with a learning rate slowly decreasing. The validation loss stops decreasing causing bigger and bigger
+overfitting.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="cyclical-momentum"&gt;
+&lt;h2&gt;Cyclical momentum&lt;/h2&gt;
+&lt;p&gt;To accompany the movement toward larger learning rates, Leslie found in his experiments that decreasing the momentum led to better results. This supports the intuition that in
+that part of the training, we want the SGD to quickly go in new directions to find a flatter area, so the new gradients need to be given more weight. In practice, he recommends
+to pick two values likes 0.85 and 0.95, and decrease from the higher one to the lower one when we increase the learning rate, then go back to the higher momentum as the learning
+rate goes down.&lt;/p&gt;
+&lt;img alt="Learning rate and momentum schedule" class="align-center" src="../images/art5_full_schedule.png" style="width: 600px;" /&gt;
+&lt;p&gt;According to Leslie, the exact best value of momentum chosen during the whole training can give us the same final results, but using cyclical momentums removes the hassle of trying multiple values
+and running several full cycles, losing precious time.&lt;/p&gt;
+&lt;p&gt;Even if using cyclical momentum always gave slightly better results, I didn't find the same gap as in the paper between using a constant momentum and cyclical ones.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="all-the-other-parameters-matter"&gt;
+&lt;h2&gt;All the other parameters matter&lt;/h2&gt;
+&lt;p&gt;The way we tune all the other hyper-parameters of the model will impact the best learning rate. That's why when we run the Learning Rate Finder, it's very important to use it
+with the exact same conditions as during our training. For instance different batch sizes or weight decays will impact the results:&lt;/p&gt;
+&lt;img alt="LR Finder for various weight decay values" class="align-center" src="../images/art5_wds.png" style="width: 400px;" /&gt;
+&lt;p&gt;This can be useful to set some hyper-parameters. For instance, with weight decay, Leslie's advice is to run the learning rate finder
+for a few values of weight decay, and pick the largest one that will still let us train at a high maximum learning rate. This is how we can come up with the &lt;span class="math"&gt;\(10^{-4}\)&lt;/span&gt; used
+in our experiments.&lt;/p&gt;
+&lt;p&gt;In his opinion, the batch size should be set to the highest possible value to fit in the available memory. Then the other hyper-parameters we may have (dropout for instance) can
+be tuned the same way as weight decay, or just by trying on a cycle and see the results they give. The only thing is to never forget to re-run the Learning Rate Finder, especially
+when deciding to pick a strategy with an aggressive learning rate close to the maximum possible value.&lt;/p&gt;
+&lt;p&gt;Training with the 1cycle policy at high learning rates is a method of regularization in itself, so we shouldn't be surprised if we have to reduce the other forms of regularization
+we were previously using when we put it in place. It will however be more efficient, since we can train for a long time at large learning rates.&lt;/p&gt;
+&lt;/div&gt;
+&lt;script type='text/javascript'&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="Deep Learning"></category><category term="SGD"></category><category term="Learning Rate"></category></entry><entry><title>Convolution in depth</title><link href="/convolution-in-depth.html" rel="alternate"></link><published>2018-04-05T11:03:00-04:00</published><updated>2018-04-05T11:03:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-05:/convolution-in-depth.html</id><summary type="html">&lt;p class="first last"&gt;CNNs (Convolutional Neural Network) are the most powerful networks used in computer vision. Let's see what a convolutional layer is all about, from the definition to the implementation in numpy, even with the back propagation.&lt;/p&gt;
 </summary><content type="html">&lt;p&gt;Since AlexNet won the ImageNet competition in 2012, linear layers have been progressively replaced by convolutional ones in neural networks trained to perform a task related to
 image recognition. Let's see what those layers do and how to implement them from scratch.&lt;/p&gt;
 &lt;div class="section" id="what-is-convolution"&gt;
