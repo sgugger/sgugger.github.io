@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Sylvain Gugger</title><link href="/" rel="alternate"></link><link href="/feeds/sylvain-gugger.atom.xml" rel="self"></link><id>/</id><updated>2018-04-07T15:23:00-04:00</updated><entry><title>The 1cycle policy</title><link href="/the-1cycle-policy.html" rel="alternate"></link><published>2018-04-07T15:23:00-04:00</published><updated>2018-04-07T15:23:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-07:/the-1cycle-policy.html</id><summary type="html">&lt;p class="first last"&gt;Properly setting the hyper-parameters of a neural network can be challenging, fortunately, there are some recipe that can help.&lt;/p&gt;
 </summary><content type="html">&lt;p&gt;Here, we will dig into the &lt;a class="reference external" href="https://arxiv.org/abs/1803.09820"&gt;first part&lt;/a&gt; of Leslie Smith's work about setting hyper-parameters (namely learning rate, momentum and weight decay). In particular, his 1cycle policy
-gives very fast results to train complex models. As an example, we'll see how it allows us to train a resnet-56 on cifar10 to a better precision than the authors in
+gives very fast results to train complex models. As an example, we'll see how it allows us to train a resnet-56 on cifar10 to the same or a better precision than the authors in
 &lt;a class="reference external" href="https://arxiv.org/abs/1512.03385"&gt;their original paper&lt;/a&gt; but with far less iterations.&lt;/p&gt;
+&lt;p&gt;By training with high learning rates we can reach a model that gets &lt;strong&gt;93% accuracy in 70 epochs&lt;/strong&gt; which is less than
+7k iterations (as opposed to the 64k iterations which made roughly 360 epochs in the original paper).&lt;/p&gt;
 &lt;p&gt;&lt;a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/Cyclical%20LR%20and%20momentums.ipynb"&gt;This notebook&lt;/a&gt; contains all the experiments.
 They are done with the same data-augmentation as in this original paper with one minor tweak: we random flip the picture horizontally and a random crop after adding a padding of
 4 pixels on each side. The minor tweak is that we don't color the padded pixels in black, but use a reflection padding, since it's the one implemented
@@ -35,10 +37,11 @@ to a slower learning rate, since a long warm-up seems to help.&lt;/p&gt;
 &lt;p&gt;In this graph, the learning rate was rising from 0.15 to 3 between epochs 0 and 22.5, getting back to 0.15 between epochs 22.5 and 45 then going to one hundredth of 0.15 in the last
 few epochs. With very high learning rates, we get to learn faster &lt;strong&gt;and&lt;/strong&gt; prevent overfitting. The difference between the validation loss and the training loss stays extremely low
 up until we annihilate the learning rates. This is the phenomenon Leslie Smith describes as super convergence.&lt;/p&gt;
+&lt;p&gt;With this technique, we can train a resnet-56 to have 92.3% accuracy on cifar10 in barely 50 epochs. Going to a cycle of 70 epochs gets us at 93% accuracy.&lt;/p&gt;
 &lt;p&gt;By opposition, a smaller cycle followed by a longer annihilation will result in something like this:&lt;/p&gt;
 &lt;img alt="An example of overfitting" class="align-center" src="../images/art5_overfitting.png" style="width: 400px;" /&gt;
 &lt;p&gt;Here our two steps end at epoch 42 and the rest of the training is spent with a learning rate slowly decreasing. The validation loss stops decreasing causing bigger and bigger
-overfitting.&lt;/p&gt;
+overfitting, and the accuracy barely gets up.&lt;/p&gt;
 &lt;/div&gt;
 &lt;div class="section" id="cyclical-momentum"&gt;
 &lt;h2&gt;Cyclical momentum&lt;/h2&gt;
