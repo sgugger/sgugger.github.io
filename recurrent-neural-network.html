@@ -1,0 +1,322 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
+
+    <link href="/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Another data science student's blog RSS">
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="In Natural Language Processing, traditional neural networks struggle to properly execute the task we give them. To predict the next work in a sentence for instance, or grasp its meaning to somehow classify it, you need to have a structure that can keeps some memory of the words it saw before. That's why Recurrent Neural Network have been designed to do, and we'll look into them in this article." />
+<meta name="keywords" content="Deep Learning, NLP">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="Recurrent Neural Network"/>
+<meta property="og:description" content="In Natural Language Processing, traditional neural networks struggle to properly execute the task we give them. To predict the next work in a sentence for instance, or grasp its meaning to somehow classify it, you need to have a structure that can keeps some memory of the words it saw before. That's why Recurrent Neural Network have been designed to do, and we'll look into them in this article."/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="/recurrent-neural-network.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-04-14 16:31:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="/author/sylvain-gugger.html">
+<meta property="article:section" content="Basics"/>
+<meta property="article:tag" content="Deep Learning"/>
+<meta property="article:tag" content="NLP"/>
+<meta property="og:image" content="/images/profile.png">
+
+  <title>Another data science student's blog &ndash; Recurrent Neural Network</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="https://sgugger.github.io">
+        <img src="/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="https://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/GuggerSylvain" target="_blank"><i class="fa fa-twitter"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="https://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
+
+      <a href="/feeds/all.rss.xml">    RSS
+</a>
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="recurrent-neural-network">Recurrent Neural Network</h1>
+    <p>
+          Posted on Sat 14 April 2018 in <a href="/category/basics.html">Basics</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>A Recurrent Neural Network is called as such because it executes the same task repeatedly, getting an input (for instance a word in a sentence), using it to update a hidden state
+and giving an output. This hidden state is the crucial part that allows the RNN to get some memory of what it's saw, encoding the general meaning of the part of the sentence it read.</p>
+<div class="section" id="the-general-principle">
+<h2>The general principle</h2>
+<p>A Recurrent Neural Network basically looks like this:</p>
+<img alt="An example of RNN" class="align-center" src="../images/art5_rnn.png" style="width: 500px;" />
+<p>From our first input <span class="math">\(i_{1}\)</span>, we compute a first hidden state <span class="math">\(h_{1}\)</span>. How? Like a neural net does, with a linear layer. From this hidden state, we compute an output
+<span class="math">\(o_{1}\)</span>, again with a linear layer. This part is no different than a regular neural net with one hidden layer. What changes is that when we have our second input <span class="math">\(i_{2}\)</span>,
+we do use the same linear layer as <span class="math">\(i_{1}\)</span> to compute the arrow going from <span class="math">\(i_{2}\)</span> to <span class="math">\(h_{2}\)</span> but we had something: the previous hidden state <span class="math">\(h_{1}\)</span> goes
+through a linear layer of its own and we merge the two results to get <span class="math">\(h_{2}\)</span>, then <span class="math">\(o_{2}\)</span> is calculated from <span class="math">\(h_{2}\)</span> the same way <span class="math">\(o_{1}\)</span> was from
+<span class="math">\(h_{1}\)</span>.</p>
+<p>Then we continue the same way up until the end. There may be many arrows in that figure, but there's only three linear layers in this neural net, they are just repeated several times.
+Specifically, we need a layer <span class="math">\(L_{ih}\)</span>, that goes from input to hidden, a layer <span class="math">\(L_{hh}\)</span> that goes from hidden to hidden, and a layer <span class="math">\(L_{ho}\)</span> that goes from the
+hidden state to the output. Following the same notations, we have weight matrices <span class="math">\(W_{ih}\)</span>, <span class="math">\(W_{hh}\)</span> and <span class="math">\(W_{ho}\)</span>, bias vectors <span class="math">\(b_{ih}\)</span>, <span class="math">\(b_{hh}\)</span> and
+<span class="math">\(b_{ho}\)</span>. If we note <span class="math">\(n_{in}\)</span> the size of the input, <span class="math">\(n_{hid}\)</span> the size of the hidden state and <span class="math">\(n_{out}\)</span> the size of the output, naturally we have the
+following sizes:</p>
+<div class="math">
+\begin{equation*}
+\begin{array}{|c|c|c|}
+\hline W_{ih} &amp; W_{hh} &amp; W_{ho} \\ \hline n_{in} \times n_{hid} &amp; n_{hid} \times n_{hid} &amp; n_{hid} \times n_{out} \\
+\hline b_{ih} &amp; b_{hh} &amp; b_{ho} \\ \hline n_{hid} &amp; n_{hid} &amp; n_{out} \\ \hline \end{array}
+\end{equation*}
+</div>
+<p>and the following equations to compute the next stage from the previous one:</p>
+<div class="math">
+\begin{equation*}
+\left \{ \begin{array}{l} h_{k} = \hbox{tanh}(W_{ih} i_{k} + b_{ih} + W_{hh} h_{k-1} + b_{hh}) \\ o_{k} = f(W_{ho} h_{k} + b_{ho}) \end{array} \right .
+\end{equation*}
+</div>
+<p>To complete these, the first value of hidden state <span class="math">\(h_{0}\)</span> is assumed to be zeros. Note that the way we merged the two arrows here is by summing them, but after applying the
+linearity. An equivalent way to see this is that we concatenated <span class="math">\(i_{k}\)</span> and <span class="math">\(h_{k-1}\)</span> then applied a weight matrix of size <span class="math">\((n_{in}+n_{hid}) \times n_{hid}\)</span>.</p>
+<p>The two biases <span class="math">\(b_{ih}\)</span> and <span class="math">\(b_{hh}\)</span> are redundant, so we could only use one of them. The non-linearity inside a RNN is often tanh, because it has the advantage of
+spitting values between -1 and 1; a ReLU would allow for values to grow larger and larger as we apply the same linear unit every time, giving a more unstable model, and a sigmoid
+wouldn't give us any negatives. The non-linearity that goes to the output <span class="math">\(f\)</span> can vary depending on our needs.</p>
+</div>
+<div class="section" id="how-to-use-them">
+<h2>How to use them</h2>
+<p>A classical use for RNNs is to try to predict the next character (or word) in a text, being given the previous ones. Both problems are the same, the only difference is the size
+of our vocabulary: for a character-level model, we would have something between 26 and a few hundreds characters (if we want to have all the special ones, lower and upper cases).
+At a word-level, the model will easily have a size in the tens (if not hundreds) of thousands.</p>
+<p>In both cases, the first step will be to split the text into tokens, which will be the characters or the words composing it (in the second case, we should actually be smarter
+than just taking the words, but this would be a subject for another article). Those tokens are then numericalized from 1 to n, the size of our vocabulary. We can a few extra tokens
+like &lt;bos&gt; (for beginning of stream), &lt;eos&gt; (end of stream) or &lt;unk&gt; (unknown, very useful when working at a word level: there's no use keeping the words that are barely present
+in our corpus since the model probably won't learn anything about them, so we can replace them all by &lt;unk&gt;).</p>
+<p>Having done that, we're almost ready to feed text to a RNN. The last step is to transform those numbers that compose our texts into vectors that can pass through a neural net. When
+dealing at a character level, we often one-hot encode those numbers, wich means transforming i into the vector of size n with everything nil except the i-th coordinate that is 1.
+But doing this with words where n can be so large might not be the best idea. Instead, in those cases, we use embeddings, which is replacing each token by a vector of a given size,
+with random coordinates at the beginning, but that the network will then learn to make better.</p>
+<p>We'll go into the specifics of this in another article. For now let's just see how to implement a basic RNN. The model in itself is very easily coded in pytorch, since it's a
+dynamical language, we can just do a for loop in the forward pass. There's a trick for the initialization: the matrix <span class="math">\(W_{hh}\)</span> should be the identity matrix at the beginning
+and not a random one. It makes sense when we think it will be applied a lot of times to the hidden state, and not changing it at the beginning seems like a good idea. Of course,
+with SGD, it won't stay very long as an identity matrix.</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">RNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_in</span><span class="p">,</span> <span class="n">n_hid</span><span class="p">,</span> <span class="n">n_out</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wgts_ih</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_hid</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">/</span><span class="n">n_in</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wgts_hh</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_hid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wgts_ho</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_hid</span><span class="p">,</span><span class="n">n_out</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">/</span><span class="n">n_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b_ih</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_hid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b_ho</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_hid</span> <span class="o">=</span> <span class="n">size</span><span class="p">,</span> <span class="n">n_hid</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">bs</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">hid</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">bs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_hid</span><span class="p">)</span>
+        <span class="n">outs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">hid</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">mm</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">wgts_ih</span><span class="p">)</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">mm</span><span class="p">(</span><span class="n">hid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wgts_hh</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_ih</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mm</span><span class="p">(</span><span class="n">hid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wgts_ho</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_ho</span>
+            <span class="n">outs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">outs</span><span class="p">)</span>
+</pre>
+<p>Note that here in the forward pass, our tensor x has three dimensions: there is the length of the sentence, the mini-batch and the size of our vocabulary. Often in RNNs, they
+are indexed in this order, since it allows us to easily go through each character of our sentences via x[0], x[1], ... Here we presented the output in the same way, but
+depending on the goal, you might want to only keep the final output. Lastly, there's no activation function for the output since it will be computed in the loss.</p>
+<p>Now that we have seen what's inside a RNN, we can use the module of the same name in pytorch, which would just be:</p>
+<pre class="code python literal-block">
+<span class="n">myRNN</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">RNN</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span> <span class="n">n_hid</span><span class="p">)</span>
+</pre>
+<p>Here we don't specify an output size since pytorch will only give us the list of hidden states. We can decide to apply the same linear layer as we did before if we need to.
+When we call this network on an input (of size sequence length by batch size by vocab size), we can also specify a initial hidden state (which will be zeros if we don't), then
+the output will be a tupe containing two things: the list of hidden states in a tensor (except the initial one) and the last hidden state.</p>
+<p>If we want to reproduce the previous RNN, we then have to do the following:</p>
+<pre class="code python literal-block">
+<span class="k">class</span> <span class="nc">RNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_in</span><span class="p">,</span> <span class="n">n_hid</span><span class="p">,</span> <span class="n">n_out</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rnn</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">RNN</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span><span class="n">n_hid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linear</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_hid</span><span class="p">,</span><span class="n">n_out</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">out</span><span class="p">,</span> <span class="n">hid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+</pre>
+<p>The last linear layer will be applied on the two first dimensions of the out tensor (one for the sequence length and one for the batch size).</p>
+</div>
+<div class="section" id="let-s-see-some-results">
+<h2>Let's see some results!</h2>
+<p>By training those kind of networks a very long time on large corpus of text, one can get surprising results, even if they are just character-level trained RNNs. This
+<a class="reference external" href="https://arxiv.org/abs/1803.09820">article</a> shows quite a few of them.</p>
+<p>To get a model trained on an RNN to generate text, we just have to give it a seed: since it knows how to predict the next word from the last few, it needs a beginning. In the
+lesson 10 of the <cite>fasta.ai
+&lt;http://fast.ai&gt;</cite> MOOK, Jeremy shows a language model pre-trained on a subset of wikipedia. It's slightly more complex than the basic RNN we just saw, using three LSTMs, but
+we'll get in the depth of that in another article. Once the model is loaded in his notebook, we can use it to generate predictions by implementing this function:</p>
+<pre class="code python literal-block">
+<span class="k">def</span> <span class="nf">what_next</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">res_len</span><span class="p">):</span>
+    <span class="n">learner</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+    <span class="n">tok</span> <span class="o">=</span> <span class="n">Tokenizer</span><span class="p">()</span><span class="o">.</span><span class="n">proc_text</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">stoi</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">tok</span><span class="p">]</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">V</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">i</span><span class="p">))</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">preds</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">val</span><span class="p">,</span><span class="n">idx</span> <span class="o">=</span> <span class="n">preds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">res_len</span><span class="p">):</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">V</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">preds</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">val</span><span class="p">,</span><span class="n">idx</span> <span class="o">=</span> <span class="n">preds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">itos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">res</span><span class="p">]</span>
+</pre>
+<p>where Tokenizer is the object we use to tokenize text (the spacy tokenizer in the notebook), itos and stoi are the mapping from tokens to ids. Using this to ask the
+language model <em>What is a recurrent neural network?</em> I got this answer:</p>
+<pre class="literal-block">
+the first of these was the first of the series, the first of which was released in october of that year.
+the first, &quot; the last of the u_n &quot;, was released on october 1,  and the second, &quot; the last of the u_n &quot;,
+was released on november 1.
+</pre>
+<p>It's not perfect, obviously, but it's interesting to note that it clearly learned basic grammar, or how to use punctuation, even closing its own quotes.</p>
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="/tag/deep-learning.html">Deep Learning</a>
+      <a href="/tag/nlp.html">NLP</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "",
+  "image": "/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>

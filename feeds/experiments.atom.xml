@@ -24,7 +24,9 @@ part of training, we should allow the learning rate to decrease more than the mi
 to switch to a higher value directly, however, but to rather slowly go there linearly, and to take as much time going up as going down.&lt;/p&gt;
 &lt;p&gt;What he observed during his experiments is that the during the middle of the cycle, the high learning rates will act as regularization method, and keep the network from overfitting.
 They will prevent the model to land in a steep area of the loss function, preferring to find a minimum that is flatter. He explained in &lt;a class="reference external" href="https://arxiv.org/abs/1708.07120"&gt;this other paper&lt;/a&gt; how he observed that by using this policy, approximates of the hessian were lower, indicating that the SGD was finding a wider flat area.&lt;/p&gt;
-&lt;p&gt;Then the last part of the training, with descending learning rates up until annihilation will allow us to go inside a steeper local minimum inside that smoother part.&lt;/p&gt;
+&lt;p&gt;Then the last part of the training, with descending learning rates up until annihilation will allow us to go inside a steeper local minimum inside that smoother part. During the
+par with high learning rates, we don't see substantial improvements in the loss or the accuracy, and the validation loss sometimes spikes very high, but we see all the benefits
+of doing this when we finally lower the learning rates at the end.&lt;/p&gt;
 &lt;img alt="Losses during a full cycle" class="align-center" src="../images/art5_losses.png" style="width: 400px;" /&gt;
 &lt;p&gt;In this graph, the learning rate was rising from 0.08 to 0.8 between epochs 0 and 41, getting back to 0.08 between epochs 41 and 82 then going to one hundredth of 0.08 in the last
 few epochs. We can see how the validation loss gets a little bit more volatile during the high learning rate part of the cycle (epochs 20 to 60 mostly) but the important part is

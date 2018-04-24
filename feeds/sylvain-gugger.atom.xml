@@ -1,5 +1,193 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Sylvain Gugger</title><link href="/" rel="alternate"></link><link href="/feeds/sylvain-gugger.atom.xml" rel="self"></link><id>/</id><updated>2018-04-07T15:23:00-04:00</updated><entry><title>The 1cycle policy</title><link href="/the-1cycle-policy.html" rel="alternate"></link><published>2018-04-07T15:23:00-04:00</published><updated>2018-04-07T15:23:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-07:/the-1cycle-policy.html</id><summary type="html">&lt;p class="first last"&gt;Properly setting the hyper-parameters of a neural network can be challenging, fortunately, there are some recipe that can help.&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Sylvain Gugger</title><link href="/" rel="alternate"></link><link href="/feeds/sylvain-gugger.atom.xml" rel="self"></link><id>/</id><updated>2018-04-14T16:31:00-04:00</updated><entry><title>Recurrent Neural Network</title><link href="/recurrent-neural-network.html" rel="alternate"></link><published>2018-04-14T16:31:00-04:00</published><updated>2018-04-14T16:31:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-14:/recurrent-neural-network.html</id><summary type="html">&lt;p class="first last"&gt;In Natural Language Processing, traditional neural networks struggle to properly execute the task we give them. To predict the next work in a sentence for instance, or grasp its meaning to somehow classify it, you need to have a structure that can keeps some memory of the words it saw before. That's why Recurrent Neural Network have been designed to do, and we'll look into them in this article.&lt;/p&gt;
+</summary><content type="html">&lt;p&gt;A Recurrent Neural Network is called as such because it executes the same task repeatedly, getting an input (for instance a word in a sentence), using it to update a hidden state
+and giving an output. This hidden state is the crucial part that allows the RNN to get some memory of what it's saw, encoding the general meaning of the part of the sentence it read.&lt;/p&gt;
+&lt;div class="section" id="the-general-principle"&gt;
+&lt;h2&gt;The general principle&lt;/h2&gt;
+&lt;p&gt;A Recurrent Neural Network basically looks like this:&lt;/p&gt;
+&lt;img alt="An example of RNN" class="align-center" src="../images/art5_rnn.png" style="width: 500px;" /&gt;
+&lt;p&gt;From our first input &lt;span class="math"&gt;\(i_{1}\)&lt;/span&gt;, we compute a first hidden state &lt;span class="math"&gt;\(h_{1}\)&lt;/span&gt;. How? Like a neural net does, with a linear layer. From this hidden state, we compute an output
+&lt;span class="math"&gt;\(o_{1}\)&lt;/span&gt;, again with a linear layer. This part is no different than a regular neural net with one hidden layer. What changes is that when we have our second input &lt;span class="math"&gt;\(i_{2}\)&lt;/span&gt;,
+we do use the same linear layer as &lt;span class="math"&gt;\(i_{1}\)&lt;/span&gt; to compute the arrow going from &lt;span class="math"&gt;\(i_{2}\)&lt;/span&gt; to &lt;span class="math"&gt;\(h_{2}\)&lt;/span&gt; but we had something: the previous hidden state &lt;span class="math"&gt;\(h_{1}\)&lt;/span&gt; goes
+through a linear layer of its own and we merge the two results to get &lt;span class="math"&gt;\(h_{2}\)&lt;/span&gt;, then &lt;span class="math"&gt;\(o_{2}\)&lt;/span&gt; is calculated from &lt;span class="math"&gt;\(h_{2}\)&lt;/span&gt; the same way &lt;span class="math"&gt;\(o_{1}\)&lt;/span&gt; was from
+&lt;span class="math"&gt;\(h_{1}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Then we continue the same way up until the end. There may be many arrows in that figure, but there's only three linear layers in this neural net, they are just repeated several times.
+Specifically, we need a layer &lt;span class="math"&gt;\(L_{ih}\)&lt;/span&gt;, that goes from input to hidden, a layer &lt;span class="math"&gt;\(L_{hh}\)&lt;/span&gt; that goes from hidden to hidden, and a layer &lt;span class="math"&gt;\(L_{ho}\)&lt;/span&gt; that goes from the
+hidden state to the output. Following the same notations, we have weight matrices &lt;span class="math"&gt;\(W_{ih}\)&lt;/span&gt;, &lt;span class="math"&gt;\(W_{hh}\)&lt;/span&gt; and &lt;span class="math"&gt;\(W_{ho}\)&lt;/span&gt;, bias vectors &lt;span class="math"&gt;\(b_{ih}\)&lt;/span&gt;, &lt;span class="math"&gt;\(b_{hh}\)&lt;/span&gt; and
+&lt;span class="math"&gt;\(b_{ho}\)&lt;/span&gt;. If we note &lt;span class="math"&gt;\(n_{in}\)&lt;/span&gt; the size of the input, &lt;span class="math"&gt;\(n_{hid}\)&lt;/span&gt; the size of the hidden state and &lt;span class="math"&gt;\(n_{out}\)&lt;/span&gt; the size of the output, naturally we have the
+following sizes:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\begin{array}{|c|c|c|}
+\hline W_{ih} &amp;amp; W_{hh} &amp;amp; W_{ho} \\ \hline n_{in} \times n_{hid} &amp;amp; n_{hid} \times n_{hid} &amp;amp; n_{hid} \times n_{out} \\
+\hline b_{ih} &amp;amp; b_{hh} &amp;amp; b_{ho} \\ \hline n_{hid} &amp;amp; n_{hid} &amp;amp; n_{out} \\ \hline \end{array}
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;and the following equations to compute the next stage from the previous one:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+\left \{ \begin{array}{l} h_{k} = \hbox{tanh}(W_{ih} i_{k} + b_{ih} + W_{hh} h_{k-1} + b_{hh}) \\ o_{k} = f(W_{ho} h_{k} + b_{ho}) \end{array} \right .
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;To complete these, the first value of hidden state &lt;span class="math"&gt;\(h_{0}\)&lt;/span&gt; is assumed to be zeros. Note that the way we merged the two arrows here is by summing them, but after applying the
+linearity. An equivalent way to see this is that we concatenated &lt;span class="math"&gt;\(i_{k}\)&lt;/span&gt; and &lt;span class="math"&gt;\(h_{k-1}\)&lt;/span&gt; then applied a weight matrix of size &lt;span class="math"&gt;\((n_{in}+n_{hid}) \times n_{hid}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;The two biases &lt;span class="math"&gt;\(b_{ih}\)&lt;/span&gt; and &lt;span class="math"&gt;\(b_{hh}\)&lt;/span&gt; are redundant, so we could only use one of them. The non-linearity inside a RNN is often tanh, because it has the advantage of
+spitting values between -1 and 1; a ReLU would allow for values to grow larger and larger as we apply the same linear unit every time, giving a more unstable model, and a sigmoid
+wouldn't give us any negatives. The non-linearity that goes to the output &lt;span class="math"&gt;\(f\)&lt;/span&gt; can vary depending on our needs.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="how-to-use-them"&gt;
+&lt;h2&gt;How to use them&lt;/h2&gt;
+&lt;p&gt;A classical use for RNNs is to try to predict the next character (or word) in a text, being given the previous ones. Both problems are the same, the only difference is the size
+of our vocabulary: for a character-level model, we would have something between 26 and a few hundreds characters (if we want to have all the special ones, lower and upper cases).
+At a word-level, the model will easily have a size in the tens (if not hundreds) of thousands.&lt;/p&gt;
+&lt;p&gt;In both cases, the first step will be to split the text into tokens, which will be the characters or the words composing it (in the second case, we should actually be smarter
+than just taking the words, but this would be a subject for another article). Those tokens are then numericalized from 1 to n, the size of our vocabulary. We can a few extra tokens
+like &amp;lt;bos&amp;gt; (for beginning of stream), &amp;lt;eos&amp;gt; (end of stream) or &amp;lt;unk&amp;gt; (unknown, very useful when working at a word level: there's no use keeping the words that are barely present
+in our corpus since the model probably won't learn anything about them, so we can replace them all by &amp;lt;unk&amp;gt;).&lt;/p&gt;
+&lt;p&gt;Having done that, we're almost ready to feed text to a RNN. The last step is to transform those numbers that compose our texts into vectors that can pass through a neural net. When
+dealing at a character level, we often one-hot encode those numbers, wich means transforming i into the vector of size n with everything nil except the i-th coordinate that is 1.
+But doing this with words where n can be so large might not be the best idea. Instead, in those cases, we use embeddings, which is replacing each token by a vector of a given size,
+with random coordinates at the beginning, but that the network will then learn to make better.&lt;/p&gt;
+&lt;p&gt;We'll go into the specifics of this in another article. For now let's just see how to implement a basic RNN. The model in itself is very easily coded in pytorch, since it's a
+dynamical language, we can just do a for loop in the forward pass. There's a trick for the initialization: the matrix &lt;span class="math"&gt;\(W_{hh}\)&lt;/span&gt; should be the identity matrix at the beginning
+and not a random one. It makes sense when we think it will be applied a lot of times to the hidden state, and not changing it at the beginning seems like a good idea. Of course,
+with SGD, it won't stay very long as an identity matrix.&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;RNN&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;wgts_ih&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;randn&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sqrt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;wgts_hh&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;eye&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;wgts_ho&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;randn&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sqrt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;b_ih&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zeros&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;b_ho&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zeros&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_hid&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;bs&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;hid&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zeros&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;bs&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;outs&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+            &lt;span class="n"&gt;hid&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;F&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;tanh&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;mm&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;wgts_ih&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;mm&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;hid&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;wgts_hh&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;b_ih&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+            &lt;span class="n"&gt;out&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;mm&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;hid&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;wgts_ho&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;b_ho&lt;/span&gt;
+            &lt;span class="n"&gt;outs&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;unsqueeze&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cat&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;outs&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Note that here in the forward pass, our tensor x has three dimensions: there is the length of the sentence, the mini-batch and the size of our vocabulary. Often in RNNs, they
+are indexed in this order, since it allows us to easily go through each character of our sentences via x[0], x[1], ... Here we presented the output in the same way, but
+depending on the goal, you might want to only keep the final output. Lastly, there's no activation function for the output since it will be computed in the loss.&lt;/p&gt;
+&lt;p&gt;Now that we have seen what's inside a RNN, we can use the module of the same name in pytorch, which would just be:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;myRNN&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;RNN&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Here we don't specify an output size since pytorch will only give us the list of hidden states. We can decide to apply the same linear layer as we did before if we need to.
+When we call this network on an input (of size sequence length by batch size by vocab size), we can also specify a initial hidden state (which will be zeros if we don't), then
+the output will be a tupe containing two things: the list of hidden states in a tensor (except the initial one) and the last hidden state.&lt;/p&gt;
+&lt;p&gt;If we want to reproduce the previous RNN, we then have to do the following:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;RNN&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+                &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rnn&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;RNN&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_in&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;linear&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;n_hid&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;n_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;out&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;hid&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rnn&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;The last linear layer will be applied on the two first dimensions of the out tensor (one for the sequence length and one for the batch size).&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="let-s-see-some-results"&gt;
+&lt;h2&gt;Let's see some results!&lt;/h2&gt;
+&lt;p&gt;By training those kind of networks a very long time on large corpus of text, one can get surprising results, even if they are just character-level trained RNNs. This
+&lt;a class="reference external" href="https://arxiv.org/abs/1803.09820"&gt;article&lt;/a&gt; shows quite a few of them.&lt;/p&gt;
+&lt;p&gt;To get a model trained on an RNN to generate text, we just have to give it a seed: since it knows how to predict the next word from the last few, it needs a beginning. In the
+lesson 10 of the &lt;cite&gt;fasta.ai
+&amp;lt;http://fast.ai&amp;gt;&lt;/cite&gt; MOOK, Jeremy shows a language model pre-trained on a subset of wikipedia. It's slightly more complex than the basic RNN we just saw, using three LSTMs, but
+we'll get in the depth of that in another article. Once the model is loaded in his notebook, we can use it to generate predictions by implementing this function:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;what_next&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;seq&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;res_len&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;learner&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;reset&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="n"&gt;tok&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Tokenizer&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;proc_text&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;seq&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;ids&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;stoi&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;word&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;word&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;tok&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;res&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;ids&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;V&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;array&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;unsqueeze&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;preds&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;learner&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;val&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;idx&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;preds&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;max&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;res_len&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;res&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;idx&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+        &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;V&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;idx&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;unsqueeze&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;preds&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;learner&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;val&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;idx&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;preds&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;max&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;itos&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;res&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;where Tokenizer is the object we use to tokenize text (the spacy tokenizer in the notebook), itos and stoi are the mapping from tokens to ids. Using this to ask the
+language model &lt;em&gt;What is a recurrent neural network?&lt;/em&gt; I got this answer:&lt;/p&gt;
+&lt;pre class="literal-block"&gt;
+the first of these was the first of the series, the first of which was released in october of that year.
+the first, &amp;quot; the last of the u_n &amp;quot;, was released on october 1,  and the second, &amp;quot; the last of the u_n &amp;quot;,
+was released on november 1.
+&lt;/pre&gt;
+&lt;p&gt;It's not perfect, obviously, but it's interesting to note that it clearly learned basic grammar, or how to use punctuation, even closing its own quotes.&lt;/p&gt;
+&lt;/div&gt;
+&lt;script type='text/javascript'&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="Deep Learning"></category><category term="NLP"></category></entry><entry><title>The 1cycle policy</title><link href="/the-1cycle-policy.html" rel="alternate"></link><published>2018-04-07T15:23:00-04:00</published><updated>2018-04-07T15:23:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-07:/the-1cycle-policy.html</id><summary type="html">&lt;p class="first last"&gt;Properly setting the hyper-parameters of a neural network can be challenging, fortunately, there are some recipe that can help.&lt;/p&gt;
 </summary><content type="html">&lt;p&gt;Here, we will dig into the &lt;a class="reference external" href="https://arxiv.org/abs/1803.09820"&gt;first part&lt;/a&gt; of Leslie Smith's work about setting hyper-parameters (namely learning rate, momentum and weight decay). In particular, his 1cycle policy
 gives very fast results to train complex models. As an example, we'll see how it allows us to train a resnet-56 on cifar10 to the same or a better precision than the authors in
 &lt;a class="reference external" href="https://arxiv.org/abs/1512.03385"&gt;their original paper&lt;/a&gt; but with far less iterations.&lt;/p&gt;
@@ -24,7 +212,9 @@ part of training, we should allow the learning rate to decrease more than the mi
 to switch to a higher value directly, however, but to rather slowly go there linearly, and to take as much time going up as going down.&lt;/p&gt;
 &lt;p&gt;What he observed during his experiments is that the during the middle of the cycle, the high learning rates will act as regularization method, and keep the network from overfitting.
 They will prevent the model to land in a steep area of the loss function, preferring to find a minimum that is flatter. He explained in &lt;a class="reference external" href="https://arxiv.org/abs/1708.07120"&gt;this other paper&lt;/a&gt; how he observed that by using this policy, approximates of the hessian were lower, indicating that the SGD was finding a wider flat area.&lt;/p&gt;
-&lt;p&gt;Then the last part of the training, with descending learning rates up until annihilation will allow us to go inside a steeper local minimum inside that smoother part.&lt;/p&gt;
+&lt;p&gt;Then the last part of the training, with descending learning rates up until annihilation will allow us to go inside a steeper local minimum inside that smoother part. During the
+par with high learning rates, we don't see substantial improvements in the loss or the accuracy, and the validation loss sometimes spikes very high, but we see all the benefits
+of doing this when we finally lower the learning rates at the end.&lt;/p&gt;
 &lt;img alt="Losses during a full cycle" class="align-center" src="../images/art5_losses.png" style="width: 400px;" /&gt;
 &lt;p&gt;In this graph, the learning rate was rising from 0.08 to 0.8 between epochs 0 and 41, getting back to 0.08 between epochs 41 and 82 then going to one hundredth of 0.08 in the last
 few epochs. We can see how the validation loss gets a little bit more volatile during the high learning rate part of the cycle (epochs 20 to 60 mostly) but the important part is
