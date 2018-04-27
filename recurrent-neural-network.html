@@ -102,7 +102,7 @@ and giving an output. This hidden state is the crucial part that allows the RNN 
 <div class="section" id="the-general-principle">
 <h2>The general principle</h2>
 <p>A Recurrent Neural Network basically looks like this:</p>
-<img alt="An example of RNN" class="align-center" src="../images/art5_rnn.png" style="width: 500px;" />
+<img alt="An example of RNN" class="align-center" src="../images/art6_rnn.png" style="width: 500px;" />
 <p>From our first input <span class="math">\(i_{1}\)</span>, we compute a first hidden state <span class="math">\(h_{1}\)</span>. How? Like a neural net does, with a linear layer. From this hidden state, we compute an output
 <span class="math">\(o_{1}\)</span>, again with a linear layer. This part is no different than a regular neural net with one hidden layer. What changes is that when we have our second input <span class="math">\(i_{2}\)</span>,
 we do use the same linear layer as <span class="math">\(i_{1}\)</span> to compute the arrow going from <span class="math">\(i_{2}\)</span> to <span class="math">\(h_{2}\)</span> but we had something: the previous hidden state <span class="math">\(h_{1}\)</span> goes

@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
+
+    <link href="/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Another data science student's blog RSS">
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="" />
+<meta name="keywords" content="Deep Learning, NLP">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="Pointer cache for Language Model"/>
+<meta property="og:description" content=""/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="/pointer-cache-for-language-model.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-04-26 17:43:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="/author/sylvain-gugger.html">
+<meta property="article:section" content="Experiments"/>
+<meta property="article:tag" content="Deep Learning"/>
+<meta property="article:tag" content="NLP"/>
+<meta property="og:image" content="/images/profile.png">
+
+  <title>Another data science student's blog &ndash; Pointer cache for Language Model</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="https://sgugger.github.io">
+        <img src="/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="https://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/GuggerSylvain" target="_blank"><i class="fa fa-twitter"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="https://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
+
+      <a href="/feeds/all.rss.xml">    RSS
+</a>
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="pointer-cache-for-language-model">Pointer cache for Language Model</h1>
+    <p>
+          Posted on Thu 26 April 2018 in <a href="/category/experiments.html">Experiments</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>You can easily boost the performance of a language model based on RNNs by adding a pointer cache on top of it. The idea was introduce by Grave et al. in <a class="reference external" href="https://arxiv.org/pdf/1612.04426.pdf">this article</a> and their results showed how this simple technique can make your perplexity decrease by 10 points without additional training.
+This sounds exciting, so let's see what this is all about and implement that in pytorch with the fastai library.</p>
+<div class="section" id="the-pointer-cache">
+<h2>The pointer cache</h2>
+<p>To understand the general idea, we have to go back to the basic of a language model built on an RNN.</p>
+<img alt="An example of RNN" class="align-center" src="../images/art6_rnn.png" style="width: 500px;" />
+<p>Here our inputs are words, and the outputs our predictions for the newt word to come: <span class="math">\(o_{1}\)</span> should be <span class="math">\(i_{2}\)</span>, <span class="math">\(o_{2}\)</span> should be <span class="math">\(i_{3}\)</span> and
+so forth. What's actually inside the black box doesn't matter here, as long as we remember there is a hidden state that will be passed along the way, updated, and used
+to make the next predictions. When the black box is a multiple-layer RNN, what we note <span class="math">\(h_{t}\)</span> is the last hidden state (the one from the final layer), which is
+also the one used by the decoder to compute <span class="math">\(o_{t}\)</span>.</p>
+<p>Even if we had some kind of information on all the inputs <span class="math">\(i_{1},\dots,i_{t}\)</span> in our hidden state to predict <span class="math">\(o_{t}\)</span>, it's all squeezed in the size of that
+hidden state, and if <span class="math">\(t\)</span> is large, it has been a long time since we saw the first inputs, so all their context has probably been forgotten by now. The idea behind
+the pointer cache is to use again those inputs to adjust a bit the prediction <span class="math">\(o_{t}\)</span>.</p>
+<img alt="RNN with cache" class="align-center" src="../images/art7_rnn_cache.png" style="width: 600px;" />
+<p>More precisely, when trying to predict <span class="math">\(o_{t}\)</span>, we take a look at all the previous couples <span class="math">\((h_{1},i_{2}),\dots,(h_{t-1},i_{t})\)</span>. The hidden state <span class="math">\(h_{1}\)</span>
+was supposed to predict <span class="math">\(i_{2}\)</span>, the hidden state <span class="math">\(h_{2}\)</span> was supposed to predict <span class="math">\(i_{3}\)</span> and so forth. If the hidden state we have right now, <span class="math">\(h_{t}\)</span>
+<em>looks a lot like</em> one of the previous hidden state <span class="math">\(h_{k}\)</span>, well maybe the word we are trying to predict is the same as <span class="math">\(h_{k}\)</span> was supposed to, and we know that
+word is <span class="math">\(i_{k+1}\)</span>, so we should boost the probability of this word in our output <span class="math">\(o_{t}\)</span>.</p>
+<p>That's the main idea behind this pointer cache technique: we really want to predict the same word as that previous hidden state, so we point at it. The cache is just that instead
+of looking through the history since the beginning, we only take a window of a certain length <span class="math">\(n\)</span>, so we look back at the <span class="math">\(n\)</span> previous couples <span class="math">\((h_{k},i_{k+1})\)</span>.</p>
+<p>There is just one thing to clarify: how does one code this <em>looks a lot like</em> thing. We simply take the dot product of <span class="math">\(h_{t}\)</span> with <span class="math">\(h_{i}\)</span> (which is the exact same
+idea as the one we saw in style transfer during the last lesson of <a class="reference external" href="http://fast.ai">fast.ai</a>). The dot product will be very high if the coordinates of <span class="math">\(h_{t}\)</span> and <span class="math">\(h_{i}\)</span> are very high together or very low (aka very high negatives) together
+so it gives us a sense of how much they are similar.</p>
+</div>
+<div class="section" id="from-the-math">
+<h2>From the math...</h2>
+<p>This is why in the article mentioned earlier, they come up with the formula:</p>
+<div class="math">
+\begin{equation*}
+p_{cache}(w | h_{1..t} x_{1..t}) \propto \sum_{i=1}^{t-1} \text{𝟙}_{\{w = x_{i+1}\}} \exp(\theta h_{t}^{T} h_{i})
+\end{equation*}
+</div>
+<p>It looks a lot more complicated but there is not much more than what I explained before in this line. Let's break it down in bits!</p>
+<p>The first part is the <span class="math">\(p_{cache}(w | h_{1..t} x_{1..t})\)</span>. It represents a probability, more specifically a probability to have the word <span class="math">\(w\)</span> while
+knowing <span class="math">\(h_{1..t} x_{1..t}\)</span>, which is a shorter way of writing <span class="math">\(h_{1},\dots,h_{t},x_{1},\dots,x_{t}\)</span>. The <span class="math">\(h_{k}\)</span> are the hidden states and the <span class="math">\(x_{k}\)</span> the
+inputs (what I called <span class="math">\(i_{k}\)</span> because input doesn't begin with an x). So this whole thing is just a fancy way of writing what is our desired output: a vector that will
+contain the probabilities that the next word is <span class="math">\(w\)</span> knowing all the previous inputs and hidden states.</p>
+<p>Then there is this weird symbol <span class="math">\(\propto\)</span> (which I honestly didn't know). While looking it up to type the formula, I found this <a class="reference external" href="http://detexify.kirelabs.org/classify.html">very cool website</a> where you can draw a mathematical symbol, and it will spit you its LaTeX code, and a google search of it will probably give you
+all the information you need to understand its meaning. Hope this trick can help you in breaking down future formulas.</p>
+<p>Anyway, they don't use the equal sign but this <em>proportional to</em> because since we want a probability, we will have to have things that add up to one in the end. They don't want to
+bother with it for now, so this is just a way of saying: we'll give that value, and at the end, divide by the sum of all of those so we're sure it adds up to one.</p>
+<p>Then comes a sum, going from 1 to <span class="math">\((t-1)\)</span>, that just means we look at all our previous hidden states. All? Not really, cause this weird 𝟙 with a double bar is an indicator
+function. Though more than its name, you're probably more interested in what it does. So when we have a 𝟙 like this, there is a condition written in index (here
+<span class="math">\(\{w = x_{i+1}\}\)</span>) and the quantity is equal to 1 when the condition is true, 0 when the condition is false. So we're not summing over all the previous states, but only
+those who respect that condition, aka the ones where <span class="math">\(x_{i+1}\)</span> (which is the word we were trying to predict) is the same as <span class="math">\(w\)</span> (the word we want to assign a
+probability now).</p>
+<p>Let's sum up until know: to assign a probability to this word w, let's look back at all the previous states where we trying to predict w. Now for all of those states, we compute
+the quantity <span class="math">\(\exp(\theta h_{t}^{T} h_{i})\)</span>. Here <span class="math">\(h_{t}^{T}h_{i}\)</span> is another way to write the dot product of <span class="math">\(h_{t}\)</span> and  <span class="math">\(h_{i}\)</span>, which we already
+established is a measure of how much <span class="math">\(h_{t}\)</span> and  <span class="math">\(h_{i}\)</span> look a like. We multiply this by an hyper-parameter <span class="math">\(\theta\)</span> and then take the exponential of it.</p>
+<p>Why the exponential? Remember the little bit with the weird symbol <span class="math">\(\propto\)</span>, we will have to divide by the sum of everything at the end. Taking exponentials of quantities
+then divide by the sum of them all... this should remind you of something. That's right, a softmax! For one, this will insure that all our probabilities add up to one, but
+mostly, it will make one of them stand out more than the others, because that's what softmax does. In the end, it'll help us point at one specific previous hidden state, the one
+that looks the most like the one we have.</p>
+<p>So in the end, we compute the softmax s of <span class="math">\(\theta h_{1} \cdot h_{t}, \dots, \theta h_{t-1} \cdot h_{t}\)</span> and attribute to <span class="math">\(p_{cache}(w)\)</span> the sum of all the
+coordinates of s corresponding to hidden state <span class="math">\(h_{i}\)</span> where we were trying to predict <span class="math">\(w\)</span>.</p>
+<p>There is just one last step, but it's an easy one. Our final probability for the word w is</p>
+<div class="math">
+\begin{equation*}
+p(w) = (1-\lambda)p_{vocab}(w) + \lambda p_{cache}(w).
+\end{equation*}
+</div>
+<p>I removed all the <span class="math">\(| h_{1..t} x_{1..t}\)</span> because they aren't really useful. So our final probability is a blend between this <span class="math">\(p_{cache}(w)\)</span> we just computed and
+<span class="math">\(p_{vocab}(w)\)</span>, which is their notation for the probabilities in our output <span class="math">\(o_{t}\)</span>, and we have another hyper-parameter <span class="math">\(\lambda\)</span> that will decide how much
+of the cache we take, and how much of the output of our RNN.</p>
+</div>
+<div class="section" id="to-the-code">
+<h2>...to the code</h2>
+<p>Now that we have completely explained the formula, let's see how we code this. Let's say, at a given point where we have to give the probabilities for each word, we
+have:</p>
+<ul class="simple">
+<li>our output of the network (softmaxed) in a torch vector named pv</li>
+<li>the current hidden state in a torch vector named hidden</li>
+<li>our cache of hidden states in a torch Tensor called hid_state</li>
+<li>our cache of targets in a torch Tensor called targ_cache.</li>
+</ul>
+<p>Then first we take all the dot products between the hidden states in our cache and the current hidden state:</p>
+<pre class="code python literal-block">
+<span class="n">all_dot_prods</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="n">theta</span> <span class="o">*</span> <span class="n">hid_cache</span><span class="p">,</span> <span class="n">hiddens</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre>
+<p>The torch command mv is applying directly the dot product between each line of hid_cache and the vector hiddens[i]. Then we softmax this:</p>
+<pre class="code python literal-block">
+<span class="n">softmaxed</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">all_dot_prods</span><span class="p">)</span>
+</pre>
+<p>Then we want, for each word w, to take the sum of all the probabilities corresponding to states where we had to predict w. To do this, I used the same trick as the implementation
+of Stephen Merity et al. <a class="reference external" href="https://github.com/salesforce/awd-lstm-lm">here on github</a>. If we consider the targets are one-hot encoded, we just have to to expand our softmaxed vector (which as the size of our cache)
+on the first dimension to have vocab_size lines, then we multiply it by targ_cache (which will zero all the things we don't want) and sum over the first axis. All of
+this is done with:</p>
+<pre class="code python literal-block">
+<span class="n">softmaxed</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">all_dot_prods</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">p_cache</span> <span class="o">=</span> <span class="p">(</span><span class="n">softmaxed</span><span class="o">.</span><span class="n">expand_as</span><span class="p">(</span><span class="n">targ_cache</span><span class="p">)</span> <span class="o">*</span> <span class="n">targ_cache</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+</pre>
+<p>Then our final predictions are given by</p>
+<pre class="code python literal-block">
+<span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">lambd</span><span class="p">)</span> <span class="o">*</span> <span class="n">pv</span> <span class="o">+</span> <span class="n">lambd</span> <span class="o">*</span> <span class="n">p_cache</span>
+</pre>
+<p>and the associated CrossEntropy Loss is given by</p>
+<pre class="code python literal-block">
+<span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">target</span><span class="p">])</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre>
+<p>if the current target is named target.</p>
+<p>With all of this, we're ready to fully code the cache pointer and I've done an implementation relying on the <a class="reference external" href="https://github.com/fastai/fastai">fastai library</a> that you can find in <a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/Cache%20pointer.ipynb">this notebook</a>. As an example, the model I provide for testing goes from a perplexity of 74.06 to 54.43.</p>
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="/tag/deep-learning.html">Deep Learning</a>
+      <a href="/tag/nlp.html">NLP</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "",
+  "image": "/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>

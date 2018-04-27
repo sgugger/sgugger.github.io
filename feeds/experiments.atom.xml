@@ -1,5 +1,161 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Experiments</title><link href="/" rel="alternate"></link><link href="/feeds/experiments.atom.xml" rel="self"></link><id>/</id><updated>2018-04-07T15:23:00-04:00</updated><entry><title>The 1cycle policy</title><link href="/the-1cycle-policy.html" rel="alternate"></link><published>2018-04-07T15:23:00-04:00</published><updated>2018-04-07T15:23:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-07:/the-1cycle-policy.html</id><summary type="html">&lt;p class="first last"&gt;Properly setting the hyper-parameters of a neural network can be challenging, fortunately, there are some recipe that can help.&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Another data science student's blog - Experiments</title><link href="/" rel="alternate"></link><link href="/feeds/experiments.atom.xml" rel="self"></link><id>/</id><updated>2018-04-26T17:43:00-04:00</updated><entry><title>Pointer cache for Language Model</title><link href="/pointer-cache-for-language-model.html" rel="alternate"></link><published>2018-04-26T17:43:00-04:00</published><updated>2018-04-26T17:43:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-26:/pointer-cache-for-language-model.html</id><summary type="html"></summary><content type="html">&lt;p&gt;You can easily boost the performance of a language model based on RNNs by adding a pointer cache on top of it. The idea was introduce by Grave et al. in &lt;a class="reference external" href="https://arxiv.org/pdf/1612.04426.pdf"&gt;this article&lt;/a&gt; and their results showed how this simple technique can make your perplexity decrease by 10 points without additional training.
+This sounds exciting, so let's see what this is all about and implement that in pytorch with the fastai library.&lt;/p&gt;
+&lt;div class="section" id="the-pointer-cache"&gt;
+&lt;h2&gt;The pointer cache&lt;/h2&gt;
+&lt;p&gt;To understand the general idea, we have to go back to the basic of a language model built on an RNN.&lt;/p&gt;
+&lt;img alt="An example of RNN" class="align-center" src="../images/art6_rnn.png" style="width: 500px;" /&gt;
+&lt;p&gt;Here our inputs are words, and the outputs our predictions for the newt word to come: &lt;span class="math"&gt;\(o_{1}\)&lt;/span&gt; should be &lt;span class="math"&gt;\(i_{2}\)&lt;/span&gt;, &lt;span class="math"&gt;\(o_{2}\)&lt;/span&gt; should be &lt;span class="math"&gt;\(i_{3}\)&lt;/span&gt; and
+so forth. What's actually inside the black box doesn't matter here, as long as we remember there is a hidden state that will be passed along the way, updated, and used
+to make the next predictions. When the black box is a multiple-layer RNN, what we note &lt;span class="math"&gt;\(h_{t}\)&lt;/span&gt; is the last hidden state (the one from the final layer), which is
+also the one used by the decoder to compute &lt;span class="math"&gt;\(o_{t}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Even if we had some kind of information on all the inputs &lt;span class="math"&gt;\(i_{1},\dots,i_{t}\)&lt;/span&gt; in our hidden state to predict &lt;span class="math"&gt;\(o_{t}\)&lt;/span&gt;, it's all squeezed in the size of that
+hidden state, and if &lt;span class="math"&gt;\(t\)&lt;/span&gt; is large, it has been a long time since we saw the first inputs, so all their context has probably been forgotten by now. The idea behind
+the pointer cache is to use again those inputs to adjust a bit the prediction &lt;span class="math"&gt;\(o_{t}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;img alt="RNN with cache" class="align-center" src="../images/art7_rnn_cache.png" style="width: 600px;" /&gt;
+&lt;p&gt;More precisely, when trying to predict &lt;span class="math"&gt;\(o_{t}\)&lt;/span&gt;, we take a look at all the previous couples &lt;span class="math"&gt;\((h_{1},i_{2}),\dots,(h_{t-1},i_{t})\)&lt;/span&gt;. The hidden state &lt;span class="math"&gt;\(h_{1}\)&lt;/span&gt;
+was supposed to predict &lt;span class="math"&gt;\(i_{2}\)&lt;/span&gt;, the hidden state &lt;span class="math"&gt;\(h_{2}\)&lt;/span&gt; was supposed to predict &lt;span class="math"&gt;\(i_{3}\)&lt;/span&gt; and so forth. If the hidden state we have right now, &lt;span class="math"&gt;\(h_{t}\)&lt;/span&gt;
+&lt;em&gt;looks a lot like&lt;/em&gt; one of the previous hidden state &lt;span class="math"&gt;\(h_{k}\)&lt;/span&gt;, well maybe the word we are trying to predict is the same as &lt;span class="math"&gt;\(h_{k}\)&lt;/span&gt; was supposed to, and we know that
+word is &lt;span class="math"&gt;\(i_{k+1}\)&lt;/span&gt;, so we should boost the probability of this word in our output &lt;span class="math"&gt;\(o_{t}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;That's the main idea behind this pointer cache technique: we really want to predict the same word as that previous hidden state, so we point at it. The cache is just that instead
+of looking through the history since the beginning, we only take a window of a certain length &lt;span class="math"&gt;\(n\)&lt;/span&gt;, so we look back at the &lt;span class="math"&gt;\(n\)&lt;/span&gt; previous couples &lt;span class="math"&gt;\((h_{k},i_{k+1})\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;There is just one thing to clarify: how does one code this &lt;em&gt;looks a lot like&lt;/em&gt; thing. We simply take the dot product of &lt;span class="math"&gt;\(h_{t}\)&lt;/span&gt; with &lt;span class="math"&gt;\(h_{i}\)&lt;/span&gt; (which is the exact same
+idea as the one we saw in style transfer during the last lesson of &lt;a class="reference external" href="http://fast.ai"&gt;fast.ai&lt;/a&gt;). The dot product will be very high if the coordinates of &lt;span class="math"&gt;\(h_{t}\)&lt;/span&gt; and &lt;span class="math"&gt;\(h_{i}\)&lt;/span&gt; are very high together or very low (aka very high negatives) together
+so it gives us a sense of how much they are similar.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="from-the-math"&gt;
+&lt;h2&gt;From the math...&lt;/h2&gt;
+&lt;p&gt;This is why in the article mentioned earlier, they come up with the formula:&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+p_{cache}(w | h_{1..t} x_{1..t}) \propto \sum_{i=1}^{t-1} \text{𝟙}_{\{w = x_{i+1}\}} \exp(\theta h_{t}^{T} h_{i})
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;It looks a lot more complicated but there is not much more than what I explained before in this line. Let's break it down in bits!&lt;/p&gt;
+&lt;p&gt;The first part is the &lt;span class="math"&gt;\(p_{cache}(w | h_{1..t} x_{1..t})\)&lt;/span&gt;. It represents a probability, more specifically a probability to have the word &lt;span class="math"&gt;\(w\)&lt;/span&gt; while
+knowing &lt;span class="math"&gt;\(h_{1..t} x_{1..t}\)&lt;/span&gt;, which is a shorter way of writing &lt;span class="math"&gt;\(h_{1},\dots,h_{t},x_{1},\dots,x_{t}\)&lt;/span&gt;. The &lt;span class="math"&gt;\(h_{k}\)&lt;/span&gt; are the hidden states and the &lt;span class="math"&gt;\(x_{k}\)&lt;/span&gt; the
+inputs (what I called &lt;span class="math"&gt;\(i_{k}\)&lt;/span&gt; because input doesn't begin with an x). So this whole thing is just a fancy way of writing what is our desired output: a vector that will
+contain the probabilities that the next word is &lt;span class="math"&gt;\(w\)&lt;/span&gt; knowing all the previous inputs and hidden states.&lt;/p&gt;
+&lt;p&gt;Then there is this weird symbol &lt;span class="math"&gt;\(\propto\)&lt;/span&gt; (which I honestly didn't know). While looking it up to type the formula, I found this &lt;a class="reference external" href="http://detexify.kirelabs.org/classify.html"&gt;very cool website&lt;/a&gt; where you can draw a mathematical symbol, and it will spit you its LaTeX code, and a google search of it will probably give you
+all the information you need to understand its meaning. Hope this trick can help you in breaking down future formulas.&lt;/p&gt;
+&lt;p&gt;Anyway, they don't use the equal sign but this &lt;em&gt;proportional to&lt;/em&gt; because since we want a probability, we will have to have things that add up to one in the end. They don't want to
+bother with it for now, so this is just a way of saying: we'll give that value, and at the end, divide by the sum of all of those so we're sure it adds up to one.&lt;/p&gt;
+&lt;p&gt;Then comes a sum, going from 1 to &lt;span class="math"&gt;\((t-1)\)&lt;/span&gt;, that just means we look at all our previous hidden states. All? Not really, cause this weird 𝟙 with a double bar is an indicator
+function. Though more than its name, you're probably more interested in what it does. So when we have a 𝟙 like this, there is a condition written in index (here
+&lt;span class="math"&gt;\(\{w = x_{i+1}\}\)&lt;/span&gt;) and the quantity is equal to 1 when the condition is true, 0 when the condition is false. So we're not summing over all the previous states, but only
+those who respect that condition, aka the ones where &lt;span class="math"&gt;\(x_{i+1}\)&lt;/span&gt; (which is the word we were trying to predict) is the same as &lt;span class="math"&gt;\(w\)&lt;/span&gt; (the word we want to assign a
+probability now).&lt;/p&gt;
+&lt;p&gt;Let's sum up until know: to assign a probability to this word w, let's look back at all the previous states where we trying to predict w. Now for all of those states, we compute
+the quantity &lt;span class="math"&gt;\(\exp(\theta h_{t}^{T} h_{i})\)&lt;/span&gt;. Here &lt;span class="math"&gt;\(h_{t}^{T}h_{i}\)&lt;/span&gt; is another way to write the dot product of &lt;span class="math"&gt;\(h_{t}\)&lt;/span&gt; and  &lt;span class="math"&gt;\(h_{i}\)&lt;/span&gt;, which we already
+established is a measure of how much &lt;span class="math"&gt;\(h_{t}\)&lt;/span&gt; and  &lt;span class="math"&gt;\(h_{i}\)&lt;/span&gt; look a like. We multiply this by an hyper-parameter &lt;span class="math"&gt;\(\theta\)&lt;/span&gt; and then take the exponential of it.&lt;/p&gt;
+&lt;p&gt;Why the exponential? Remember the little bit with the weird symbol &lt;span class="math"&gt;\(\propto\)&lt;/span&gt;, we will have to divide by the sum of everything at the end. Taking exponentials of quantities
+then divide by the sum of them all... this should remind you of something. That's right, a softmax! For one, this will insure that all our probabilities add up to one, but
+mostly, it will make one of them stand out more than the others, because that's what softmax does. In the end, it'll help us point at one specific previous hidden state, the one
+that looks the most like the one we have.&lt;/p&gt;
+&lt;p&gt;So in the end, we compute the softmax s of &lt;span class="math"&gt;\(\theta h_{1} \cdot h_{t}, \dots, \theta h_{t-1} \cdot h_{t}\)&lt;/span&gt; and attribute to &lt;span class="math"&gt;\(p_{cache}(w)\)&lt;/span&gt; the sum of all the
+coordinates of s corresponding to hidden state &lt;span class="math"&gt;\(h_{i}\)&lt;/span&gt; where we were trying to predict &lt;span class="math"&gt;\(w\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;There is just one last step, but it's an easy one. Our final probability for the word w is&lt;/p&gt;
+&lt;div class="math"&gt;
+\begin{equation*}
+p(w) = (1-\lambda)p_{vocab}(w) + \lambda p_{cache}(w).
+\end{equation*}
+&lt;/div&gt;
+&lt;p&gt;I removed all the &lt;span class="math"&gt;\(| h_{1..t} x_{1..t}\)&lt;/span&gt; because they aren't really useful. So our final probability is a blend between this &lt;span class="math"&gt;\(p_{cache}(w)\)&lt;/span&gt; we just computed and
+&lt;span class="math"&gt;\(p_{vocab}(w)\)&lt;/span&gt;, which is their notation for the probabilities in our output &lt;span class="math"&gt;\(o_{t}\)&lt;/span&gt;, and we have another hyper-parameter &lt;span class="math"&gt;\(\lambda\)&lt;/span&gt; that will decide how much
+of the cache we take, and how much of the output of our RNN.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="to-the-code"&gt;
+&lt;h2&gt;...to the code&lt;/h2&gt;
+&lt;p&gt;Now that we have completely explained the formula, let's see how we code this. Let's say, at a given point where we have to give the probabilities for each word, we
+have:&lt;/p&gt;
+&lt;ul class="simple"&gt;
+&lt;li&gt;our output of the network (softmaxed) in a torch vector named pv&lt;/li&gt;
+&lt;li&gt;the current hidden state in a torch vector named hidden&lt;/li&gt;
+&lt;li&gt;our cache of hidden states in a torch Tensor called hid_state&lt;/li&gt;
+&lt;li&gt;our cache of targets in a torch Tensor called targ_cache.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Then first we take all the dot products between the hidden states in our cache and the current hidden state:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;all_dot_prods&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;mv&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;theta&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;hid_cache&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;hiddens&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;The torch command mv is applying directly the dot product between each line of hid_cache and the vector hiddens[i]. Then we softmax this:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;softmaxed&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;F&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;softmax&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;all_dot_prods&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Then we want, for each word w, to take the sum of all the probabilities corresponding to states where we had to predict w. To do this, I used the same trick as the implementation
+of Stephen Merity et al. &lt;a class="reference external" href="https://github.com/salesforce/awd-lstm-lm"&gt;here on github&lt;/a&gt;. If we consider the targets are one-hot encoded, we just have to to expand our softmaxed vector (which as the size of our cache)
+on the first dimension to have vocab_size lines, then we multiply it by targ_cache (which will zero all the things we don't want) and sum over the first axis. All of
+this is done with:&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;softmaxed&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;F&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;softmax&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;all_dot_prods&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;unsqueeze&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;p_cache&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;softmaxed&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_as&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;targ_cache&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;targ_cache&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;squeeze&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Then our final predictions are given by&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;lambd&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;pv&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;lambd&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;p_cache&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;and the associated CrossEntropy Loss is given by&lt;/p&gt;
+&lt;pre class="code python literal-block"&gt;
+&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;target&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;if the current target is named target.&lt;/p&gt;
+&lt;p&gt;With all of this, we're ready to fully code the cache pointer and I've done an implementation relying on the &lt;a class="reference external" href="https://github.com/fastai/fastai"&gt;fastai library&lt;/a&gt; that you can find in &lt;a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/Cache%20pointer.ipynb"&gt;this notebook&lt;/a&gt;. As an example, the model I provide for testing goes from a perplexity of 74.06 to 54.43.&lt;/p&gt;
+&lt;/div&gt;
+&lt;script type='text/javascript'&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="Deep Learning"></category><category term="NLP"></category></entry><entry><title>The 1cycle policy</title><link href="/the-1cycle-policy.html" rel="alternate"></link><published>2018-04-07T15:23:00-04:00</published><updated>2018-04-07T15:23:00-04:00</updated><author><name>Sylvain Gugger</name></author><id>tag:None,2018-04-07:/the-1cycle-policy.html</id><summary type="html">&lt;p class="first last"&gt;Properly setting the hyper-parameters of a neural network can be challenging, fortunately, there are some recipe that can help.&lt;/p&gt;
 </summary><content type="html">&lt;p&gt;Here, we will dig into the &lt;a class="reference external" href="https://arxiv.org/abs/1803.09820"&gt;first part&lt;/a&gt; of Leslie Smith's work about setting hyper-parameters (namely learning rate, momentum and weight decay). In particular, his 1cycle policy
 gives very fast results to train complex models. As an example, we'll see how it allows us to train a resnet-56 on cifar10 to the same or a better precision than the authors in
 &lt;a class="reference external" href="https://arxiv.org/abs/1512.03385"&gt;their original paper&lt;/a&gt; but with far less iterations.&lt;/p&gt;
