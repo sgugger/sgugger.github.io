@@ -4,6 +4,7 @@
 &lt;img alt="Example 1" class="align-center" src="../images/art8_eiffel.png" style="width: 600px;" /&gt;
 &lt;p&gt;or like this&lt;/p&gt;
 &lt;img alt="Example 2" class="align-center" src="../images/art8_shield.png" style="width: 600px;" /&gt;
+&lt;p&gt;It goes with &lt;a class="reference external" href="https://github.com/sgugger/Deep-Learning/blob/master/DeepPainterlyHarmonization.ipynb"&gt;this notebook&lt;/a&gt; where I have tried to replicate the experiments (all images shown in this post come from applying it).&lt;/p&gt;
 &lt;div class="section" id="style-transfer"&gt;
 &lt;h2&gt;Style Transfer&lt;/h2&gt;
 &lt;p&gt;To read more about the basics of style transfer, I can only recommend the &lt;a class="reference external" href="http://fast.ai"&gt;fast.ai&lt;/a&gt; course, or &lt;a class="reference external" href="https://medium.com/&amp;#64;shivamgoel1791/everything-you-need-to-know-about-neural-style-transfer-994530cc9a6e"&gt;this blog post&lt;/a&gt; by an international fellow colleague. Since there's a lot to cover,
