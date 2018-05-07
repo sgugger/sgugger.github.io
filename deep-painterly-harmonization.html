@@ -1,0 +1,383 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/theme/pygments/github.min.css">
+  <link rel="stylesheet" type="text/css" href="/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Another data science student's blog Atom">
+
+    <link href="/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Another data science student's blog RSS">
+
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="" />
+
+
+<meta name="author" content="Sylvain Gugger" />
+<meta name="description" content="In this article we'll decode the research article with the same name and get some cool results integrating random objects in paintings while preserving their style." />
+<meta name="keywords" content="Deep Learning, Style Transfer">
+<meta property="og:site_name" content="Another data science student's blog"/>
+<meta property="og:title" content="Deep Painterly Harmonization"/>
+<meta property="og:description" content="In this article we'll decode the research article with the same name and get some cool results integrating random objects in paintings while preserving their style."/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="/deep-painterly-harmonization.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2018-05-03 16:22:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="/author/sylvain-gugger.html">
+<meta property="article:section" content="Experiments"/>
+<meta property="article:tag" content="Deep Learning"/>
+<meta property="article:tag" content="Style Transfer"/>
+<meta property="og:image" content="/images/profile.png">
+
+  <title>Another data science student's blog &ndash; Deep Painterly Harmonization</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="https://sgugger.github.io">
+        <img src="/images/profile.png" alt="Sylvain Gugger" title="Sylvain Gugger">
+      </a>
+      <h1><a href="https://sgugger.github.io">Sylvain Gugger</a></h1>
+
+
+      <nav>
+        <ul class="list">
+          <li><a href="/pages/about-me.html#about-me">About Me</a></li>
+
+          <li><a href="http://fast.ai/" target="_blank">fast.ai</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-linkedin" href="https://www.linkedin.com/in/sylvain-gugger-74218b144/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/sgugger" target="_blank"><i class="fa fa-github"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/GuggerSylvain" target="_blank"><i class="fa fa-twitter"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+    <nav>
+      <a href="https://sgugger.github.io">    Home
+</a>
+
+      <a href="/categories.html">Categories</a>
+      <a href="/tags.html">Tags</a>
+      <a href="/archives.html">Archives</a>
+
+      <a href="/feeds/all.atom.xml">    Atom
+</a>
+
+      <a href="/feeds/all.rss.xml">    RSS
+</a>
+    </nav>
+
+<article class="single">
+  <header>
+    <h1 id="deep-painterly-harmonization">Deep Painterly Harmonization</h1>
+    <p>
+          Posted on Thu 03 May 2018 in <a href="/category/experiments.html">Experiments</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>In this article we'll decode <a class="reference external" href="https://arxiv.org/pdf/1612.04426.pdf">this article</a> and get some cool results integrating random objects in paintings while preserving their style like this</p>
+<img alt="Example 1" class="align-center" src="../images/art8_eiffel.png" style="width: 600px;" />
+<p>or like this</p>
+<img alt="Example 2" class="align-center" src="../images/art8_shield.png" style="width: 600px;" />
+<div class="section" id="style-transfer">
+<h2>Style Transfer</h2>
+<p>To read more about the basics of style transfer, I can only recommend the <a class="reference external" href="http://fast.ai">fast.ai</a> course, or <a class="reference external" href="https://medium.com/&#64;shivamgoel1791/everything-you-need-to-know-about-neural-style-transfer-994530cc9a6e">this blog post</a> by an international fellow colleague. Since there's a lot to cover,
+I will assume you are familiar with this. To make things simple, we will try to match in some way (that is going to be defined later) the features a CNN computes on our
+input image with the features it computes on our output image.</p>
+<p>The model the team who wrote the article chose is VGG19. However, I found similar results with VGG16 which is a bit faster, and lighter in terms of memory, so I used this one. Then
+we will grab the results of five convolutional layers, the first one and the ones just after the MaxPooling layers (where we half the resolution). The idea is that each will give
+us some different kind of information. The first convolutional layer is very close to the image, so it will focus more on the details, while the fifth one will be more conceptual
+and its activation will represent general properties of the picture.</p>
+<p>Now to properly integrate the new object in the painting, the authors of the article propose to make two different phases. The first one will focus more on the general style, giving
+an intermediate result that where the object will still stand out a bit in the picture. The second phase will focus more on the details, and smoothening the edges that could have
+appeared during the first part. Here is an example of the result of the two stages.</p>
+<img alt="Stage 1 and 2" class="align-center" src="../images/art8_eiffel_stages.png" style="width: 600px;" />
+<p>Before going further, a bit of vocabulary. As in the article, we'll call the content picture the painting with our object pasted on it and the style picture the original painting.
+The input is the content picture for phase 1, the result of this first stage for phase 2. In both cases, we'll compute the results of the convolutional layers for the content
+picture and the style picture at first, which will serve as our reference features. Then we compute the results of the same convolutional layers for our input, compare them to these
+references and calculate a loss from that.</p>
+<p>At this point, it's all a matter of classic training: we'll compute the gradients of this loss and use them to get a better input, then reiterate the process. As long as our
+loss properly represents what we want (the object transformed to the style of the painting), we should get some good result. Since the number of parameters is way less than usual
+(only the pixels of our input compared to all the weights of a model, usually) we can use a variant of SGD that will not only calculate the gradients, but the second derivative
+as well (the hessian matrix). Without going into the details, this will allow us to make smarter steps each time we update our input, and converge a lot faster. Specifically, we'll
+use the <a class="reference external" href="https://en.wikipedia.org/wiki/Limited-memory_BFGS">LBFGS optimizer</a> which is already implemented in pytorch.</p>
+<p>This all seems pretty straightforward, but that's because we didn't get to the tough part yet: what are these two magical loss functions (one for stage 1 and one for stage 2) that
+we will use?</p>
+</div>
+<div class="section" id="the-first-pass">
+<h2>The first pass</h2>
+<p>The loss function used in this pass is exactly the same as in the <a class="reference external" href="https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Gatys_Image_Style_Transfer_CVPR_2016_paper.pdf">original work of Gatys et al.</a> There is a content loss, that measures the difference between
+our input and the content image, a style loss, that measures the difference between our input and the style image, and we sum them with certain weights to get our final loss.</p>
+<p>The main difference is that the article was intended to match a whole picture with a certain style, whereas we only have to worry about part of the picture, the object we add.
+That means we will mask all the parts of the image that have nothing to do with it when we compute our loss.</p>
+<img alt="Mask on the content image" class="align-center" src="../images/art8_mask.png" style="width: 600px;" />
+<p>In practice, we will use a slightly dilated mask, that encircles a bit more than just the object we're adding (as the authors did in the <a class="reference external" href="https://github.com/luanfujun/deep-painterly-harmonization">code they published</a> ). We don't apply that mask before sending the content image, the style image or the output image in the model,
+which would make us loose information too early, but we resize it to match the dimensions of our different features (the results from the convolutional layers) and apply it to
+those.</p>
+<p>The content loss is then pretty straightforward: it's the mean-squared error between the masked features of our content image and the masked features of our input. The authors
+chose to use the result of the fourth convolutional layer only for this content loss. Using one of the first convolutional layers would force the final output to match the initial
+object too closely.</p>
+<p>The style loss is a bit trickier. We'll use Gram matrices like we do for regular style transfer, but the problem of the mask is that it might hide some useful information
+regarding the style. For the content, all the details we needed were inside the mask, because that's where the object we are adding is, but the general style of the painting is
+more global. That's why before we apply the mask to the style features, we will make some kind of matching to reorganize them.</p>
+<img alt="Mask on the style image" class="align-center" src="../images/art8_mask_style.png" style="width: 600px;" />
+<p>To be more specific, for each layer of results we have from our model, we'll look at each 3 by 3 (by the number of channels) part of the content features (or patch, as they call it
+in the article) and find the 3 by 3 patch in the style features that looks the most like it, and match them. To measure how much two patches look alike, we'll use the cosine similarity
+between them.</p>
+<p>Once that mapping is done (note that it is done once and for all between the content and the style), we will transform the style features so that the centers of each 3 by 3 patch
+in the content features is aligned with its match in the style features. Then
+we will apply the resized mask on the input features and the style features, compute the Gram matrices of both of them then take the mean-squared error to give us the style loss.
+The authors chose to use the convolutional layers number 3, 4 and 5 for this style loss, and take the mean of the three of them.</p>
+<p>The final loss of this first stage is then:</p>
+<div class="math">
+\begin{equation*}
+\mathcal{L} = 5 \mathcal{L}_{content} + 100 \mathcal{L}_{loss}
+\end{equation*}
+</div>
+<p>Once we're done with the construction of our input (they use 1000 iterations in the paper), we make a mean between our output and the style picture to have our final output. We
+could just use the mask around our object, but that will get an abrupt transition that will stand out, so we use a Gaussian blurring on the sides of the mask (so that we get from
+the 1s to the 0s a it more smoothly), then compute</p>
+<div class="math">
+\begin{equation*}
+\hbox{final output} = \hbox{blurred mask} \times \hbox{output} + (1 - \hbox{blurred mask}) \times \hbox{style picture}.
+\end{equation*}
+</div>
+</div>
+<div class="section" id="the-second-pass">
+<h2>The second pass</h2>
+<p>As good as the results of the first pass already are, they usually have two defaults that make the object we added in the painting stand out: first we didn't use any of the features
+of the first convolutional layers so the fine details, especially those of the painting style, won't be present. Then we didn't do anything to make sure our final picture is smooth.</p>
+<p>To remedy to those two things, the authors propose to do a second pass to refine the first result. The first change is in the matching process. This time, the matching between the
+content and the style is done on a reference layer first, and the results will be transported to the others, but this mapping won't be different for each layer like in the first pass.
+Then, after doing the first mapping between the content and the style for this reference layer like in the first stage, they refine it by trying to insure that adjacent vectors in the
+style features remain adjacent through the mapping.</p>
+<img alt="Neighbor matching algorithm" class="align-center" src="../images/art8_algo2.png" style="width: 400px;" />
+<p>For each pixel p, we consider a certain set of candidates built by going in every direction on p' (in the code they take the full 5 by 5 square centered on p), taking the value
+given by our first match, and applying to it the inverse of the translation that goes from p to p'. Then we find the candidate that minimizes the L2 loss between its style
+features and the ones of its neighbors.</p>
+<p>Once that matching is done for the reference layer (the authors chose the fourth one), we resize it for the other layers, then proceed like in the first stage to compute the
+style loss. There is just one difference, they indicate in their article that they suppress the repetitions of the style vectors picked more than once. This is possible because
+the Gram matrix doesn't care about the exact spacial location of a style feature (since we sum other all locations for each coefficient) but having too many times the same
+style vectors apparently hurt a bit the performance.</p>
+<p>The matching being done, the authors use this time the convolutional layers number 1, 2, 3 and 4 for the style loss (and take the mean of them), and the fourth convolutional layer
+for the content loss. To add more details to the final output, they also consider two more losses. The first one, the Total Variation loss, just sums the difference between
+adjacent pixel values, which will insure the result is smoother:</p>
+<div class="math">
+\begin{equation*}
+\mathcal{L}_{tv} = \sum_{x,y} ((O_{x,y} - O_{x-1,y})^{2} + (O_{x,y} - O_{x,y-1})^{2})
+\end{equation*}
+</div>
+<p>where O designs our output. The last one is the histogram loss introduced in <a class="reference external" href="https://arxiv.org/abs/1701.08893">this other article</a> .</p>
+</div>
+<div class="section" id="the-histogram-loss">
+<h2>The histogram loss</h2>
+<p>Histogram matching is a technique that is often used to modify a certain photograph with the luminosity or shadows of another. The technique in itself is explained on <a class="reference external" href="https://en.wikipedia.org/wiki/Histogram_matching">wikipedia</a> and here is a concrete example of application.</p>
+<img alt="Histogram matching" class="align-center" src="../images/art8_hist_match.png" style="width: 600px;" />
+<p>In their paper, Pierre Wilmot et al. found that applying the same technique to define another loss could help preserve the textures of the style picture. They recommended to use
+it for the features of the first convolutional layer and the fourth one, for both the fine details and the more general aspects of the style.</p>
+<p>The idea is, for these two layers, to compute the histogram of each channel of the style features as a reference. Then, at each pass of our training, we calculate the remapping of
+our output features so that their histogram (for each channel) matches the style reference. We then define the histogram loss as being the the mean-squared error between the output
+features and their remapped version. The challenge here is to compute that remapping.</p>
+<p>Let's say we are trying to change x so that it matches an histogram hist. We sort x first, while keeping the permutation we had to do (it will be used at the end to put the new values
+we interpolate in their right place). Then, when we treat the i-th value, we look at the first index idx such has hist.cumsum(idx) is greater than i (which means the i-th value of the
+data we are trying to match the histogram is in the bin with index idx). The value attributed to x[i] is basically</p>
+<div class="math">
+\begin{equation*}
+\hbox{min} + \hbox{idx} \times \frac{\hbox{max} - \hbox{min}}{n_{bins}}
+\end{equation*}
+</div>
+<p>where <span class="math">\(\hbox{min}\)</span> and <span class="math">\(\hbox{max}\)</span> are the minim and the maximum values of the data. This formula is slightly corrected because if we have
+several values of x with the same index idx, we want them to be evenly distributed inside the range of the bin. So we compute the ratio</p>
+<div class="math">
+\begin{equation*}
+\hbox{ratio} = \frac{i - \hbox{hist.cumsum}(\hbox{idx}-1)}{\hbox{hist}[\hbox{idx}]}
+\end{equation*}
+</div>
+<p>and finally put</p>
+<div class="math">
+\begin{equation*}
+x[i] = \hbox{min} + (\hbox{idx} + \hbox{ratio} ) \times \frac{\hbox{max} - \hbox{min}}{n_{bins}}.
+\end{equation*}
+</div>
+<p>Now we just have to do this for all the i possibles and all the channels. Of course, a simple for loop just won't do if we want to use the GPU to handle all the computations
+quickly (and if we want 1000 iterations we better compute this remapping as quickly as we can). Let's assume we have our input x of size ch (for channels) by a given n (the number
+of activations we keep) and a variable hist_ref of size ch by n_bins (they picked 256 in the paper). Sorting x for each channel and keeping the corresponding mapping is easy with
+pytorch:</p>
+<pre class="code literal-block">
+sorted_x, sort_idx = x.data.sort(1)
+</pre>
+<p>Then we have to adapt our histogram a bit because x and our reference may not have the same number of activations (we removed some style features, the one that appeared more than
+once). So an histogram for x would have a total sum of n, so we just have to compute the sum of each lines in hist_ref.</p>
+<pre class="code literal-block">
+hist = hist_ref * n/hist_ref.sum(1).unsqueeze(1)#Normalization between the different lengths of masks.
+cum_ref = hist.cumsum(1)
+cum_prev = torch.cat([torch.zeros(ch,1).cuda(), cum_ref[:,:-1]],1)
+</pre>
+<p>The cumsums will be used later, and we will need both the cumulative sums of hist_ref and the one that contain the cumulative sums for the previous index. To replace our for loop
+we will create a tensor that contains all the values i from 1 to n. To determine the first index idx such that hist.cumsum(idx) is greater than i, I've used this line:</p>
+<pre class="code literal-block">
+rng = torch.arange(1,n+1).unsqueeze(0).cuda()
+idx = (cum_ref.unsqueeze(1) - rng.unsqueeze(2) &lt; 0).sum(2).long()
+</pre>
+<p>Since all the lines of cum_ref are sorted by ascending values, by subtracting i, the sum over the booleans corresponding to the test cum_ref - i &lt; 0 will give us the first index
+where cum_ref is greater than i. Then we use this tensor idx to get all the values in cum_prev and hist that we will need. Since pytorch doesn't like indexing with a multi-dimensional
+tensor, we have to flatten everything (though that probably won't be needed anymore in pytorch 0.4)</p>
+<pre class="code literal-block">
+ymin, ymax = x.data.min(1)[0].unsqueeze(1), x.data.max(1)[0].unsqueeze(1)
+step = (ymax-ymin)/n_bins
+ratio = (rng - cum_prev.view(-1)[idx.view(-1)].view(ch,-1)) / (1e-8 + hist.view(-1)[idx.view(-1)].view(ch,-1))
+ratio = ratio.squeeze().clamp(0,1)
+new_x = ymin + (ratio + idx.float()) * step
+</pre>
+<p>At this stage new_x contains all the values of our remapping, but they are sorted. We have to use the inverse permutation of the one we applied at the beginning to finish the
+process. To find the inverse permutation I've simply chose to get the arg sort:</p>
+<pre class="code literal-block">
+_, remap = sort_idx.sort()
+new_x = new_x.view(-1)[remap.view(-1)].view(ch,-1)
+</pre>
+</div>
+<div class="section" id="normalization">
+<h2>Normalization</h2>
+<p>In the end, the biggest challenge I faced while working on the implementation of this article is the imbalance between the style features and the input features: in the second
+phase, the mask applied to the style features and the one applied to the input features are different, so the gram matrices we compute from them have different ranges of values. I
+haven't really understood the way the authors of the paper dealt with this in their code so I chose my own approach.</p>
+<p>If we apply a mask with <span class="math">\(n_{1}\)</span> elements for the style features and a mask with <span class="math">\(n_{2}\)</span> elements for the input features, I decided to multiply the style features by
+<span class="math">\(\sqrt{\frac{n_{2}}{n_{1}}}\)</span> to artificially <em>resize</em> them. Why? Well the gram matrix is computed by doing a sum, which will either have <span class="math">\(n_{1}\)</span> or <span class="math">\(n_{2}\)</span>
+elements, of products of two elements of our features. So inside that sum, when we compute the gram matrix of the style features, the square root will disappear and we will
+multiply the result by <span class="math">\(\frac{n_{2}}{n_{1}}\)</span>, which is a way to <em>resize</em> this sum of <span class="math">\(n_{1}\)</span> elements to a sum of <span class="math">\(n_{2}\)</span> elements.</p>
+<p>Without this little trick, trainings usually gave me this:</p>
+<img alt="Histogram matching" class="align-center" src="../images/art8_bug_norm.png" style="width: 600px;" />
+<p>For the histograms, we also have a resize to do, which is just done by multiplying the histogram of the style features by this ratio <span class="math">\(\frac{n_{2}}{n_{1}}\)</span>. Then in the article
+they used the minimum and maximum values of the style features to reconstruct the remapped output features, which didn't make any sense to me, since the histogram loss then compares
+those remapped features to the output features, so I used the minimums and maximums of the output features.</p>
+<p>At the end, those four losses are summed with some weights to give the final loss of the second stage:</p>
+<div class="math">
+\begin{equation*}
+\mathcal{L} = \mathcal{L}_{c} + w_{s} \mathcal{L}_{s} + w_{h} \mathcal{L}_{hist} + w_{tv} \mathcal{L}_{tv}
+\end{equation*}
+</div>
+<p>where they determine a parameter <span class="math">\(\tau\)</span> by training a neural net they call a painting estimator then use</p>
+<div class="math">
+\begin{equation*}
+\left \{ \begin{array}{l} w_{s} = \tau \\ w_{tv} = \frac{10 \tau}{(1 + \exp(10^{4} \hbox{mtv} -25))} \\ w_{h} = (10 - w_{tv}) * \tau \end{array} \right .
+\end{equation*}
+</div>
+<p>I've taken the formulas used in their code, which are different from the ones they put in their article. The quantity mtv is the median of all the variational looses (the things
+we sum to compute TV loss) on the style picture. Of course, the values of tau that worked for them aren't necessarily the best ones since I've used different scaling for the
+losses. There are probably some better values that could be used. I didn't get the histogram loss to show any real contribution to the picture, for instance.</p>
+<p>Lastly, for the last stage, we use the result from the first stage to compute the remapping but it's slightly better to use the initial input image for the reconstruction
+(which the authors do in their code). See the top of the Eiffel tower here, on the left by reconstructing from the input picture and on the right from the stage one.</p>
+<img alt="Comparison of inputs for stage 2" class="align-center" src="../images/art8_comp_init.png" style="width: 600px;" />
+</div>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="/tag/deep-learning.html">Deep Learning</a>
+      <a href="/tag/style-transfer.html">Style Transfer</a>
+    </p>
+  </div>
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy; Sylvain Gugger 2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Another data science student's blog ",
+  "url" : "",
+  "image": "/images/profile.png",
+  "description": ""
+}
+</script>
+</body>
+</html>
